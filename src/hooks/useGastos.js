@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { toast } from 'react-hot-toast'
 
-// Configuración de API - SIN process.env para Vite
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+// Configuración de API - SOLO URL base, sin /api al final
+const API_BASE_URL = import.meta.env.VITE_BASE_URL || 'https://trabajotracker-backend.vercel.app'
 
 export const useGastos = () => {
   const [gastos, setGastos] = useState([])
@@ -17,9 +17,9 @@ export const useGastos = () => {
   const fetchGastos = useCallback(async () => {
     try {
       setLoading(true)
-      console.log('Fetching gastos from:', `${API_URL}/gastos`)
+      console.log('Fetching gastos from:', `${API_BASE_URL}/api/gastos`)
       
-      const response = await axios.get(`${API_URL}/gastos`)
+      const response = await axios.get(`${API_BASE_URL}/api/gastos`)
       console.log('Gastos API Response:', response.data)
       
       // Tu API devuelve {success, count, data} o similar
@@ -96,7 +96,7 @@ export const useGastos = () => {
       
       console.log('Creating gasto:', gastoData)
       
-      const response = await axios.post(`${API_URL}/gastos`, gastoData)
+      const response = await axios.post(`${API_BASE_URL}/api/gastos`, gastoData)
       
       // Tu API devuelve {success, data} o similar
       const responseData = response.data.success ? response.data.data : response.data
@@ -137,7 +137,7 @@ export const useGastos = () => {
   const deleteGasto = async (id) => {
     try {
       setLoading(true)
-      await axios.delete(`${API_URL}/gastos/${id}`)
+      await axios.delete(`${API_BASE_URL}/api/gastos/${id}`)
       setGastos(prev => prev.filter(gasto => gasto.id_gasto !== id))
       toast.success('Gasto eliminado exitosamente')
     } catch (err) {
