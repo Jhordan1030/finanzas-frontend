@@ -6,13 +6,21 @@ import Input from '../components/common/UI/Input'
 import Select from '../components/common/UI/Select'
 import { useGastos } from '../hooks/useGastos'
 import { useIngresos } from '../hooks/useIngresos'
-import { ChevronLeft, ChevronRight, Plus, Calendar, Tag, DollarSign, TrendingUp, TrendingDown, FileText, Download, RefreshCw, Edit, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Calendar, Tag, DollarSign, TrendingUp, TrendingDown, FileText, Download, RefreshCw, Edit, Trash2, MoreVertical } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, subMonths, addMonths, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'react-hot-toast'
 import { useForm } from 'react-hook-form'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+
+// Función para obtener fecha actual
+const obtenerFechaActual = () => {
+  const hoy = new Date();
+  // Ajustar a la zona horaria local
+  const fechaAjustada = new Date(hoy.getTime() - (hoy.getTimezoneOffset() * 60000));
+  return fechaAjustada.toISOString().split('T')[0];
+};
 
 const Dashboard = () => {
   const { 
@@ -38,6 +46,19 @@ const Dashboard = () => {
   const [showModalGasto, setShowModalGasto] = useState(false)
   const [registroLoading, setRegistroLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [mobileView, setMobileView] = useState(false)
+
+  // Detectar tamaño de pantalla
+  useEffect(() => {
+    const checkMobile = () => {
+      setMobileView(window.innerWidth < 768)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // DEBUG: Mostrar datos
   useEffect(() => {
@@ -71,7 +92,7 @@ const Dashboard = () => {
     reset: resetDia 
   } = useForm({
     defaultValues: {
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: obtenerFechaActual(),
       valor_ganado: '',
       descripcion_trabajo: ''
     }
@@ -84,7 +105,7 @@ const Dashboard = () => {
     reset: resetGasto 
   } = useForm({
     defaultValues: {
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: obtenerFechaActual(),
       monto_gasto: '',
       descripcion_gasto: '',
       categoria: ''
@@ -130,7 +151,11 @@ const Dashboard = () => {
         return 'Fecha inválida'
       }
       
-      // Formato: "mar, 8 dic 2025"
+      // Formato corto para móvil, completo para desktop
+      if (mobileView) {
+        return format(fechaObj, "d/M/yy", { locale: es })
+      }
+      
       return format(fechaObj, "EEE, d 'de' MMM yyyy", { locale: es })
     } catch (error) {
       console.error('Error formateando fecha:', fechaString, error)
@@ -146,6 +171,10 @@ const Dashboard = () => {
       const fechaObj = parsearFechaUTC(fechaString)
       if (!fechaObj || isNaN(fechaObj.getTime())) {
         return 'Fecha inválida'
+      }
+      
+      if (mobileView) {
+        return format(fechaObj, "EEE, d MMM", { locale: es })
       }
       
       // Formato: "martes, 8 de diciembre de 2025"
@@ -206,10 +235,10 @@ const Dashboard = () => {
   }
 
   const dayClasses = {
-    'worked': 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200',
+    'worked': 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200',
     'not-worked': 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100',
-    'today-worked': 'bg-green-500 text-white border-green-600 hover:bg-green-600',
-    'today-not-worked': 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200'
+    'today-worked': 'bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600 shadow-sm',
+    'today-not-worked': 'bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-200'
   }
 
   const getDayTooltip = (date) => {
@@ -292,18 +321,6 @@ const Dashboard = () => {
     })
   }
 
-  // Formatear número sin símbolo de moneda
-  const formatNumeroSimple = (valor) => {
-    if (valor === null || valor === undefined || isNaN(valor)) return '0.00'
-    
-    const numero = parseFloat(valor)
-    
-    return numero.toLocaleString(userLocale, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })
-  }
-
   // Manejar registro de día trabajado
   const handleRegistroDiaTrabajado = async (data) => {
     setRegistroLoading(true)
@@ -363,7 +380,7 @@ const Dashboard = () => {
   // Abrir modales
   const abrirModalDia = () => {
     resetDia({
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: obtenerFechaActual(),
       valor_ganado: '',
       descripcion_trabajo: ''
     })
@@ -372,7 +389,7 @@ const Dashboard = () => {
 
   const abrirModalGasto = () => {
     resetGasto({
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: obtenerFechaActual(),
       monto_gasto: '',
       descripcion_gasto: '',
       categoria: ''
@@ -587,7 +604,7 @@ const Dashboard = () => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Cargando datos...</p>
         </div>
       </div>
@@ -596,22 +613,24 @@ const Dashboard = () => {
 
   // Formatear fecha actual para mostrar
   const fechaActualFormateada = new Date().toLocaleDateString(userLocale, {
-    weekday: 'long',
+    weekday: mobileView ? 'short' : 'long',
     day: 'numeric',
-    month: 'long',
+    month: mobileView ? 'short' : 'long',
     year: 'numeric'
   })
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">Dashboard de Trabajo</h1>
-          <p className="text-gray-600">Seguimiento de días trabajados y finanzas</p>
+          <p className="text-gray-600 text-sm sm:text-base">
+            Seguimiento de días trabajados y finanzas
+          </p>
         </div>
-        <div className="flex items-center space-x-3">
-          <div className="text-sm text-gray-500">
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:block text-sm text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg">
             {fechaActualFormateada}
           </div>
           <Button
@@ -622,6 +641,7 @@ const Dashboard = () => {
             title="Actualizar datos"
           >
             <RefreshCw className="h-4 w-4" />
+            <span className="sr-only sm:not-sr-only sm:ml-2">Actualizar</span>
           </Button>
           <Button
             onClick={generarPDFResumen}
@@ -630,100 +650,135 @@ const Dashboard = () => {
             size="small"
             className="flex items-center"
           >
-            <FileText className="h-4 w-4 mr-2" />
-            PDF
-            <Download className="h-4 w-4 ml-2" />
+            <FileText className="h-4 w-4" />
+            <span className="sr-only sm:not-sr-only sm:ml-2">PDF</span>
+            <Download className="hidden sm:block h-4 w-4 ml-2" />
           </Button>
         </div>
       </div>
 
       {/* Botones de Acción Rápida */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="card hover-lift">
-          <div className="card-body">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Registrar Día Trabajado</h3>
-                <p className="text-gray-600 mb-4">Añade un nuevo día de trabajo con su valor</p>
-                <Button onClick={abrirModalDia} className="w-full md:w-auto">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Nuevo Día Trabajado
-                </Button>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        {/* Card Registrar Día Trabajado */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <Calendar className="h-5 w-5 text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Registrar Día Trabajado</h3>
               </div>
-              <div className="p-3 bg-green-100 rounded-full">
-                <TrendingUp className="h-6 w-6 text-green-600" />
+              <p className="text-gray-600 text-sm mb-4">
+                Añade un nuevo día de trabajo con su valor
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  onClick={abrirModalDia} 
+                  className="flex-1 justify-center"
+                  size="medium"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Nuevo Día
+                </Button>
+                <div className="flex items-center justify-center sm:justify-start gap-2 px-3 py-2 bg-emerald-50 rounded-lg">
+                  <DollarSign className="h-4 w-4 text-emerald-600" />
+                  <span className="text-sm font-medium text-emerald-700">
+                    {formatNumeroLocal(totalIngresosMes)}
+                  </span>
+                  <span className="text-xs text-emerald-600 hidden sm:inline">
+                    este mes
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm text-gray-500">
-              <DollarSign className="h-4 w-4 mr-1" />
-              <span>Total este mes: <strong className="text-green-600">{formatNumeroLocal(totalIngresosMes)}</strong></span>
+            <div className="hidden sm:block">
+              <div className="p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl">
+                <TrendingUp className="h-8 w-8 text-emerald-600" />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="card hover-lift">
-          <div className="card-body">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Registrar Gasto</h3>
-                <p className="text-gray-600 mb-4">Añade un nuevo gasto con categoría</p>
-                <Button onClick={abrirModalGasto} variant="secondary" className="w-full md:w-auto">
+        {/* Card Registrar Gasto */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 bg-rose-100 rounded-lg">
+                  <Tag className="h-5 w-5 text-rose-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Registrar Gasto</h3>
+              </div>
+              <p className="text-gray-600 text-sm mb-4">
+                Añade un nuevo gasto con categoría
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  onClick={abrirModalGasto} 
+                  variant="secondary"
+                  className="flex-1 justify-center"
+                  size="medium"
+                >
                   <Tag className="h-4 w-4 mr-2" />
                   Nuevo Gasto
                 </Button>
-              </div>
-              <div className="p-3 bg-red-100 rounded-full">
-                <TrendingDown className="h-6 w-6 text-red-600" />
+                <div className="flex items-center justify-center sm:justify-start gap-2 px-3 py-2 bg-rose-50 rounded-lg">
+                  <DollarSign className="h-4 w-4 text-rose-600" />
+                  <span className="text-sm font-medium text-rose-700">
+                    {formatNumeroLocal(totalGastosMes)}
+                  </span>
+                  <span className="text-xs text-rose-600 hidden sm:inline">
+                    este mes
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm text-gray-500">
-              <DollarSign className="h-4 w-4 mr-1" />
-              <span>Total este mes: <strong className="text-red-600">
-                {formatNumeroLocal(totalGastosMes)}
-              </strong></span>
+            <div className="hidden sm:block">
+              <div className="p-3 bg-gradient-to-br from-rose-50 to-rose-100 rounded-xl">
+                <TrendingDown className="h-8 w-8 text-rose-600" />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats Cards - Pasar balance real */}
-      <StatsCards balance={{
-        total: balanceMes,
-        ingresos: totalIngresosMes,
-        gastos: totalGastosMes
-      }} loading={gastosLoading || ingresosLoading} />
+      {/* Stats Cards */}
+      <StatsCards 
+        balance={{
+          total: balanceMes,
+          ingresos: totalIngresosMes,
+          gastos: totalGastosMes
+        }} 
+        loading={gastosLoading || ingresosLoading} 
+      />
 
       {/* Calendario de Trabajo */}
-      <div className="card">
-        <div className="card-header">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Calendario de Días Trabajados</h2>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-green-500 mr-2"></div>
-                <span className="text-sm text-gray-600">Trabajado</span>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="p-4 sm:p-6 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Calendario de Días Trabajados</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {diasTrabajadosMes} de {totalDiasMes} días trabajados ({porcentajeTrabajo}%)
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <div className="h-3 w-3 rounded-full bg-emerald-500"></div>
+                  <span className="text-xs text-gray-600">Trabajado</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-3 w-3 rounded-full bg-gray-300"></div>
+                  <span className="text-xs text-gray-600">No trabajado</span>
+                </div>
               </div>
-              <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-gray-300 mr-2"></div>
-                <span className="text-sm text-gray-600">No trabajado</span>
-              </div>
-              <Button
-                onClick={generarPDFResumen}
-                loading={pdfLoading}
-                variant="ghost"
-                size="small"
-                className="ml-2"
-              >
-                <FileText className="h-4 w-4" />
-              </Button>
             </div>
           </div>
-          <p className="text-sm text-gray-500 mt-2">
-            {diasTrabajadosMes} de {totalDiasMes} días trabajados este mes ({porcentajeTrabajo}%)
-          </p>
         </div>
         
-        <div className="card-body">
+        <div className="p-4 sm:p-6">
           {/* Controles del calendario */}
           <div className="flex items-center justify-between mb-6">
             <button
@@ -734,7 +789,7 @@ const Dashboard = () => {
               <ChevronLeft className="h-5 w-5 text-gray-600" />
             </button>
             
-            <h3 className="text-xl font-bold text-gray-900">
+            <h3 className="text-xl font-bold text-gray-900 text-center px-4">
               {format(currentDate, 'MMMM yyyy', { locale: currentLocale }).charAt(0).toUpperCase() + 
                format(currentDate, 'MMMM yyyy', { locale: currentLocale }).slice(1)}
             </h3>
@@ -748,22 +803,29 @@ const Dashboard = () => {
             </button>
           </div>
 
-          {/* Días de la semana - Usar formato local */}
-          <div className="grid grid-cols-7 gap-2 mb-4">
-            {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => (
-              <div key={day} className="text-center text-sm font-medium text-gray-500">
-                {day}
-              </div>
-            ))}
+          {/* Días de la semana - Responsive */}
+          <div className="grid grid-cols-7 gap-1 mb-4">
+            {mobileView 
+              ? ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day) => (
+                  <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
+                    {day}
+                  </div>
+                ))
+              : ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => (
+                  <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+                    {day}
+                  </div>
+                ))
+            }
           </div>
 
-          {/* Días del mes */}
-          <div className="grid grid-cols-7 gap-2">
+          {/* Días del mes - Responsive */}
+          <div className="grid grid-cols-7 gap-1">
             {/* Espacios vacíos al inicio */}
             {Array.from({ 
               length: monthStart.getDay() === 0 ? 6 : (monthStart.getDay() - 1) 
             }).map((_, i) => (
-              <div key={`empty-${i}`} className="h-12"></div>
+              <div key={`empty-${i}`} className="h-10 sm:h-12"></div>
             ))}
             
             {/* Días del mes */}
@@ -774,7 +836,7 @@ const Dashboard = () => {
               return (
                 <div
                   key={day.toString()}
-                  className={`h-12 flex flex-col items-center justify-center rounded-lg border ${dayClasses[status]} ${
+                  className={`h-10 sm:h-12 flex items-center justify-center rounded-lg border ${dayClasses[status]} ${
                     isCurrentMonth ? 'opacity-100' : 'opacity-50'
                   } transition-all duration-200 hover:scale-105 cursor-pointer relative group`}
                   title={getDayTooltip(day)}
@@ -784,51 +846,56 @@ const Dashboard = () => {
                   </span>
                   {diasTrabajadosMap[format(day, 'yyyy-MM-dd')]?.trabajado && (
                     <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
-                      <div className="h-1 w-1 rounded-full bg-current"></div>
+                      <div className="h-1.5 w-1.5 rounded-full bg-current"></div>
                     </div>
                   )}
                   
-                  {/* Tooltip */}
-                  <div className="absolute z-10 bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-pre-line max-w-xs">
-                    {getDayTooltip(day)}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                  </div>
+                  {/* Tooltip solo en desktop */}
+                  {!mobileView && (
+                    <div className="absolute z-10 bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-pre-line max-w-xs">
+                      {getDayTooltip(day)}
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                  )}
                 </div>
               )
             })}
           </div>
 
-          {/* Estadísticas del calendario */}
+          {/* Estadísticas del calendario - Responsive */}
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{diasTrabajadosMes}</div>
-                <div className="text-sm text-gray-500">Días trabajados</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="text-center p-3 bg-emerald-50 rounded-lg">
+                <div className="text-xl sm:text-2xl font-bold text-emerald-700">{diasTrabajadosMes}</div>
+                <div className="text-xs sm:text-sm text-emerald-600">Días trabajados</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-600">{totalDiasMes - diasTrabajadosMes}</div>
-                <div className="text-sm text-gray-500">Días no trabajados</div>
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-xl sm:text-2xl font-bold text-gray-700">{totalDiasMes - diasTrabajadosMes}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Días libres</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{porcentajeTrabajo}%</div>
-                <div className="text-sm text-gray-500">Tasa de trabajo</div>
+              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <div className="text-xl sm:text-2xl font-bold text-blue-700">{porcentajeTrabajo}%</div>
+                <div className="text-xs sm:text-sm text-blue-600">Tasa de trabajo</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  {formatNumeroLocal(totalIngresosMes)}
+              <div className="text-center p-3 bg-violet-50 rounded-lg">
+                <div className="text-xl sm:text-2xl font-bold text-violet-700">
+                  {mobileView 
+                    ? `$${totalIngresosMes.toLocaleString('es-ES', {maximumFractionDigits: 0})}`
+                    : formatNumeroLocal(totalIngresosMes)
+                  }
                 </div>
-                <div className="text-sm text-gray-500">Ingresos del mes</div>
+                <div className="text-xs sm:text-sm text-violet-600">Ingresos mes</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Últimos días trabajados y gastos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Últimos días trabajados y gastos - Layout responsivo */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Últimos días trabajados */}
-        <div className="card">
-          <div className="card-header">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Últimos Días Trabajados</h2>
               <Button 
@@ -836,66 +903,99 @@ const Dashboard = () => {
                 variant="ghost"
                 onClick={abrirModalDia}
                 aria-label="Agregar día trabajado"
+                className="hidden sm:flex"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="ml-2">Agregar</span>
+              </Button>
+              <Button 
+                size="small" 
+                variant="ghost"
+                onClick={abrirModalDia}
+                aria-label="Agregar día trabajado"
+                className="sm:hidden"
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          <div className="card-body p-0">
+          <div className="divide-y divide-gray-200">
             {ingresosLoading ? (
               <div className="space-y-4 p-6">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-gray-200 rounded animate-pulse"></div>
+                  <div key={i} className="h-12 bg-gray-100 rounded animate-pulse"></div>
                 ))}
               </div>
             ) : !ingresos || ingresos.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-gray-400 mb-2">📅</div>
-                <p className="text-gray-500">No hay días trabajados registrados</p>
-                <Button onClick={abrirModalDia} className="mt-4">
+              <div className="text-center py-8 px-4">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full mb-4">
+                  <Calendar className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="text-gray-500 mb-4">No hay días trabajados registrados</p>
+                <Button onClick={abrirModalDia} size="medium">
                   <Calendar className="h-4 w-4 mr-2" />
                   Registrar Primer Día
                 </Button>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200">
-                {ingresos.slice(0, 10).map((ingreso, index) => (
-                  ingreso ? (
-                    <div key={ingreso.id_ingreso || `ingreso-${index}`} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900">
-                          {ingreso.descripcion_trabajo || (
-                            <span className="text-gray-400 italic">Sin descripción</span>
-                          )}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {/* CORRECCIÓN: Usar la función de formato corregida */}
-                          {formatFechaCompleta(ingreso.fecha)}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-3 ml-4">
-                        <p className="font-bold text-green-600 whitespace-nowrap">
-                          {formatNumeroLocal(ingreso.valor_ganado)}
-                        </p>
-                        <button
-                          onClick={() => handleEliminarIngreso(ingreso.id_ingreso)}
-                          className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+              ingresos.slice(0, 8).map((ingreso, index) => (
+                ingreso ? (
+                  <div 
+                    key={ingreso.id_ingreso || `ingreso-${index}`} 
+                    className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-3">
+                        <div className="hidden sm:flex items-center justify-center w-8 h-8 bg-emerald-100 rounded-full flex-shrink-0">
+                          <Calendar className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate">
+                            {ingreso.descripcion_trabajo || (
+                              <span className="text-gray-400 italic">Sin descripción</span>
+                            )}
+                          </p>
+                          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                            {mobileView 
+                              ? formatFecha(ingreso.fecha)
+                              : formatFechaCompleta(ingreso.fecha)
+                            }
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  ) : null
-                ))}
-              </div>
+                    <div className="flex items-center gap-3 ml-4">
+                      <p className="font-bold text-emerald-600 whitespace-nowrap text-sm sm:text-base">
+                        {mobileView 
+                          ? `$${parseFloat(ingreso.valor_ganado || 0).toLocaleString('es-ES', {maximumFractionDigits: 0})}`
+                          : formatNumeroLocal(ingreso.valor_ganado)
+                        }
+                      </p>
+                      <button
+                        onClick={() => handleEliminarIngreso(ingreso.id_ingreso)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : null
+              ))
             )}
           </div>
+          {ingresos && ingresos.length > 8 && (
+            <div className="p-4 border-t border-gray-200 text-center">
+              <Button variant="ghost" size="small" className="text-sm">
+                Ver todos los días trabajados
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Últimos gastos */}
-        <div className="card">
-          <div className="card-header">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Últimos Gastos</h2>
               <Button 
@@ -903,53 +1003,90 @@ const Dashboard = () => {
                 variant="ghost"
                 onClick={abrirModalGasto}
                 aria-label="Agregar gasto"
+                className="hidden sm:flex"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="ml-2">Agregar</span>
+              </Button>
+              <Button 
+                size="small" 
+                variant="ghost"
+                onClick={abrirModalGasto}
+                aria-label="Agregar gasto"
+                className="sm:hidden"
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          <div className="card-body p-0">
+          <div className="divide-y divide-gray-200">
             {gastosLoading ? (
               <div className="space-y-4 p-6">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-gray-200 rounded animate-pulse"></div>
+                  <div key={i} className="h-12 bg-gray-100 rounded animate-pulse"></div>
                 ))}
               </div>
             ) : !gastos || gastos.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-gray-400 mb-2">💰</div>
-                <p className="text-gray-500">No hay gastos registrados</p>
-                <Button onClick={abrirModalGasto} className="mt-4">
+              <div className="text-center py-8 px-4">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full mb-4">
+                  <Tag className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="text-gray-500 mb-4">No hay gastos registrados</p>
+                <Button onClick={abrirModalGasto} size="medium" variant="secondary">
                   <Tag className="h-4 w-4 mr-2" />
                   Registrar Primer Gasto
                 </Button>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200">
-                {gastos.slice(0, 10).map((gasto, index) => (
-                  gasto ? (
-                    <div key={gasto.id_gasto || `gasto-${index}`} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{gasto.descripcion_gasto || 'Sin descripción'}</p>
-                        <p className="text-sm text-gray-500 truncate">
-                          {/* CORRECCIÓN: Usar la función de formato corregida */}
-                          {formatFecha(gasto.fecha)} • 
-                          <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-xs whitespace-nowrap">
-                            {gasto.categoria || 'Sin categoría'}
-                          </span>
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-3 ml-4">
-                        <p className="font-bold text-red-600 whitespace-nowrap">
-                          {formatNumeroLocal(gasto.monto_gasto)}
-                        </p>
+              gastos.slice(0, 8).map((gasto, index) => (
+                gasto ? (
+                  <div 
+                    key={gasto.id_gasto || `gasto-${index}`} 
+                    className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-3">
+                        <div className="hidden sm:flex items-center justify-center w-8 h-8 bg-rose-100 rounded-full flex-shrink-0">
+                          <Tag className="h-4 w-4 text-rose-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                            <p className="font-medium text-gray-900 truncate text-sm sm:text-base">
+                              {gasto.descripcion_gasto || 'Sin descripción'}
+                            </p>
+                            <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600 whitespace-nowrap self-start sm:self-center">
+                              {gasto.categoria || 'Sin categoría'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {mobileView 
+                              ? formatFecha(gasto.fecha)
+                              : formatFecha(gasto.fecha)
+                            }
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  ) : null
-                ))}
-              </div>
+                    <div className="ml-4">
+                      <p className="font-bold text-rose-600 whitespace-nowrap text-sm sm:text-base">
+                        {mobileView 
+                          ? `-$${parseFloat(gasto.monto_gasto || 0).toLocaleString('es-ES', {maximumFractionDigits: 0})}`
+                          : `-${formatNumeroLocal(gasto.monto_gasto)}`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                ) : null
+              ))
             )}
           </div>
+          {gastos && gastos.length > 8 && (
+            <div className="p-4 border-t border-gray-200 text-center">
+              <Button variant="ghost" size="small" className="text-sm">
+                Ver todos los gastos
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -968,8 +1105,12 @@ const Dashboard = () => {
             <Input
               label="Fecha*"
               type="date"
-              {...registerDia('fecha', { required: 'La fecha es requerida' })}
+              {...registerDia('fecha', { 
+                required: 'La fecha es requerida',
+                max: obtenerFechaActual()
+              })}
               error={errorsDia.fecha?.message}
+              max={obtenerFechaActual()}
             />
             <Input
               label="Valor ganado ($)*"
@@ -994,7 +1135,7 @@ const Dashboard = () => {
             error={errorsDia.descripcion_trabajo?.message}
           />
 
-          <div className="flex space-x-3 pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <Button
               type="submit"
               loading={registroLoading}
@@ -1033,8 +1174,12 @@ const Dashboard = () => {
             <Input
               label="Fecha*"
               type="date"
-              {...registerGasto('fecha', { required: 'La fecha es requerida' })}
+              {...registerGasto('fecha', { 
+                required: 'La fecha es requerida',
+                max: obtenerFechaActual()
+              })}
               error={errorsGasto.fecha?.message}
+              max={obtenerFechaActual()}
             />
             <Input
               label="Monto ($)*"
@@ -1068,7 +1213,7 @@ const Dashboard = () => {
             />
           </div>
 
-          <div className="flex space-x-3 pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <Button
               type="submit"
               loading={registroLoading}

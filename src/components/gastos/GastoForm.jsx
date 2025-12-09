@@ -5,13 +5,24 @@ import Select from '../common/UI/Select'
 import Button from '../common/UI/Button'
 import { toast } from 'react-hot-toast'
 
+// Función para obtener fecha actual
+const obtenerFechaActual = () => {
+  const hoy = new Date();
+  // Ajustar a la zona horaria local
+  const fechaAjustada = new Date(hoy.getTime() - (hoy.getTimezoneOffset() * 60000));
+  return fechaAjustada.toISOString().split('T')[0];
+};
+
 const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose }) => {
+  // Determinar la fecha inicial
+  const fechaInicial = initialData?.fecha || obtenerFechaActual();
+
   const { register, handleSubmit, formState: { errors }, reset } = useForm({
-    defaultValues: initialData || {
-      fecha: new Date().toISOString().split('T')[0],
-      categoria: '',
-      descripcion_gasto: '',
-      monto_gasto: '',
+    defaultValues: {
+      fecha: fechaInicial,
+      categoria: initialData?.categoria || '',
+      descripcion_gasto: initialData?.descripcion_gasto || '',
+      monto_gasto: initialData?.monto_gasto || '',
     }
   })
 
@@ -37,6 +48,8 @@ const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose })
         type="date"
         {...register('fecha', { required: 'La fecha es requerida' })}
         error={errors.fecha?.message}
+        // Establecer máximo como fecha actual
+        max={obtenerFechaActual()}
       />
 
       <Select
