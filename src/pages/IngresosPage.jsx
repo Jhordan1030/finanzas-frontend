@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useIngresos } from '../hooks/useIngresos'
 import IngresoForm from '../components/ingresos/IngresoForm'
 import Modal from '../components/common/UI/Modal'
@@ -17,7 +17,8 @@ import {
   ChevronUp,
   Search,
   MoreVertical,
-  DollarSign
+  DollarSign,
+  RefreshCw
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import jsPDF from 'jspdf'
@@ -43,6 +44,7 @@ const IngresosPage = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [generandoPDF, setGenerandoPDF] = useState(false)
   const [mobileView, setMobileView] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Detectar tamaño de pantalla
   useEffect(() => {
@@ -98,27 +100,6 @@ const IngresosPage = () => {
       return format(fechaObj, "EEE, d 'de' MMM yyyy", { locale: es })
     } catch (error) {
       console.error('Error formateando fecha:', fechaString, error)
-      return 'Fecha inválida'
-    }
-  }
-
-  // Función para formatear fecha completa
-  const formatFechaCompleta = (fechaString) => {
-    if (!fechaString) return 'Fecha no disponible'
-    
-    try {
-      const fechaObj = parsearFechaUTC(fechaString)
-      if (!fechaObj || isNaN(fechaObj.getTime())) {
-        return 'Fecha inválida'
-      }
-      
-      if (mobileView) {
-        return format(fechaObj, "EEE, d MMM", { locale: es })
-      }
-      
-      return format(fechaObj, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })
-    } catch (error) {
-      console.error('Error formateando fecha completa:', fechaString, error)
       return 'Fecha inválida'
     }
   }
@@ -188,53 +169,124 @@ const IngresosPage = () => {
   
   const porcentajeTrabajo = totalDiasMes > 0 ? ((diasTrabajadosMes / totalDiasMes) * 100).toFixed(1) : 0
 
-  const handleCreate = async (data) => {
+  // **CORRECCIÓN: Función para refrescar datos**
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true)
     try {
-      await createIngreso(data)
       await fetchIngresos()
-      setModalOpen(false)
-      toast.success('Día trabajado registrado exitosamente')
+      toast.success('Datos actualizados')
     } catch (error) {
-      console.error('Error creando día trabajado:', error)
-      toast.error('Error al registrar el día trabajado')
+      console.error('Error refrescando:', error)
+      toast.error('Error al actualizar datos')
+    } finally {
+      setIsRefreshing(false)
     }
-  }
+  }, [fetchIngresos])
 
-  const handleUpdate = async (data) => {
+  // **CORRECCIÓN: handleCreate mejorado**
+  const handleCreate = useCallback(async (data) => {
     try {
-      if (editingIngreso && editingIngreso.id_ingreso) {
-        await deleteIngreso(editingIngreso.id_ingreso)
-      }
+      console.log('➕ Creando nuevo ingreso:', data)
       await createIngreso(data)
+      
+      // Cerrar modal inmediatamente
+      setModalOpen(false)
+      
+      // Mostrar mensaje de éxito
+      toast.success('✅ Día trabajado registrado exitosamente')
+      
+      // Actualizar datos en segundo plano
+      setTimeout(async () => {
+        try {
+          await fetchIngresos()
+        } catch (error) {
+          console.error('Error actualizando después de crear:', error)
+        }
+      }, 500)
+      
+    } catch (error) {
+      console.error('❌ Error creando día trabajado:', error)
+      toast.error('Error al registrar el día trabajado')
+      
+      // Cerrar modal incluso si hay error
+      setModalOpen(false)
+    }
+  }, [createIngreso, fetchIngresos])
+
+  // **CORRECCIÓN: handleUpdate mejorado - EVITA RECARGA**
+  const handleUpdate = useCallback(async (data) => {
+    try {
+      console.log('🔄 Actualizando ingreso:', data)
+      console.log('🔄 ID a eliminar:', editingIngreso?.id_ingreso)
+      
+      if (editingIngreso && editingIngreso.id_ingreso) {
+        // Eliminar el ingreso viejo
+        await deleteIngreso(editingIngreso.id_ingreso)
+        console.log('✅ Ingreso viejo eliminado')
+      }
+      
+      // Crear nuevo ingreso con los datos actualizados
+      await createIngreso(data)
+      console.log('✅ Nuevo ingreso creado')
+      
+      // **SOLUCIÓN: Cerrar modal inmediatamente sin esperar**
       setEditingIngreso(null)
       setModalOpen(false)
-      toast.success('Día trabajado actualizado exitosamente')
+      
+      // Mostrar mensaje de éxito
+      toast.success('✅ Día trabajado actualizado exitosamente')
+      
+      // **SOLUCIÓN: Actualizar datos en segundo plano SIN bloquear UI**
+      setTimeout(async () => {
+        try {
+          await fetchIngresos()
+          console.log('✅ Datos actualizados en segundo plano')
+        } catch (error) {
+          console.error('❌ Error actualizando datos:', error)
+        }
+      }, 500)
+      
     } catch (error) {
-      console.error('Error actualizando día trabajado:', error)
+      console.error('❌ Error actualizando día trabajado:', error)
       toast.error('Error al actualizar el día trabajado')
+      
+      // Cerrar modal incluso si hay error
+      setEditingIngreso(null)
+      setModalOpen(false)
     }
-  }
+  }, [editingIngreso, deleteIngreso, createIngreso, fetchIngresos])
 
   const handleDelete = async (id) => {
     try {
       await deleteIngreso(id)
       setDeletingId(null)
       toast.success('Día trabajado eliminado exitosamente')
+      
+      // Actualizar datos después de eliminar
+      setTimeout(async () => {
+        try {
+          await fetchIngresos()
+        } catch (error) {
+          console.error('Error actualizando después de eliminar:', error)
+        }
+      }, 300)
+      
     } catch (error) {
       console.error('Error eliminando día trabajado:', error)
       toast.error('Error al eliminar el día trabajado')
     }
   }
 
-  const handleEdit = (ingreso) => {
+  const handleEdit = useCallback((ingreso) => {
+    console.log('✏️ Editando ingreso:', ingreso)
     setEditingIngreso(ingreso)
     setModalOpen(true)
-  }
+  }, [])
 
-  const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = useCallback(() => {
     setEditingIngreso(null)
     setModalOpen(true)
-  }
+  }, [])
 
   const handleGenerarPDF = async () => {
     setGenerandoPDF(true)
@@ -350,12 +402,25 @@ const IngresosPage = () => {
     setSearchQuery('')
   }
 
+  // **CORRECCIÓN: Actualizar datos cuando se monta el componente**
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await fetchIngresos()
+      } catch (error) {
+        console.error('Error cargando datos iniciales:', error)
+      }
+    }
+    loadData()
+  }, [fetchIngresos])
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <p className="text-red-600 mb-4">Error al cargar los días trabajados</p>
-          <Button variant="secondary" onClick={() => window.location.reload()}>
+          <Button variant="secondary" onClick={handleRefresh} loading={isRefreshing}>
+            <RefreshCw className="h-4 w-4 mr-2" />
             Reintentar
           </Button>
         </div>
@@ -365,10 +430,20 @@ const IngresosPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header con botón de refresh */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">Días Trabajados</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">Días Trabajados</h1>
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Actualizar datos"
+            >
+              <RefreshCw className={`h-4 w-4 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
           <p className="text-gray-600 text-sm sm:text-base">
             Registra y gestiona tus días trabajados
           </p>
@@ -586,9 +661,10 @@ const IngresosPage = () => {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan="4" className="px-4 sm:px-6 py-8 text-center">
-                    <div className="flex justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  <td colSpan="4" className="px-4 sm:px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mb-4"></div>
+                      <p className="text-gray-500">Cargando días trabajados...</p>
                     </div>
                   </td>
                 </tr>
@@ -643,14 +719,14 @@ const IngresosPage = () => {
                       <div className="flex items-center justify-end space-x-2">
                         <button
                           onClick={() => handleEdit(ingreso)}
-                          className="text-blue-600 hover:text-blue-900 transition-colors p-1"
+                          className="text-blue-600 hover:text-blue-900 transition-colors p-1 hover:bg-blue-50 rounded"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => setDeletingId(ingreso.id_ingreso)}
-                          className="text-red-600 hover:text-red-900 transition-colors p-1"
+                          className="text-red-600 hover:text-red-900 transition-colors p-1 hover:bg-red-50 rounded"
                           title="Eliminar"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -687,25 +763,35 @@ const IngresosPage = () => {
         )}
       </div>
 
-      {/* Modal para crear/editar */}
+      {/* **CORRECCIÓN: Modal mejorado** */}
       <Modal
         isOpen={modalOpen}
         onClose={() => {
+          console.log('🔒 Cerrando modal desde IngresosPage')
           setModalOpen(false)
-          setEditingIngreso(null)
+          // Pequeño delay para asegurar animación
+          setTimeout(() => {
+            setEditingIngreso(null)
+          }, 300)
         }}
         title={editingIngreso ? 'Editar Día Trabajado' : 'Nuevo Día Trabajado'}
         size="md"
       >
-        <IngresoForm
-          onSubmit={editingIngreso ? handleUpdate : handleCreate}
-          initialData={editingIngreso}
-          loading={loading}
-          onClose={() => {
-            setModalOpen(false)
-            setEditingIngreso(null)
-          }}
-        />
+        {modalOpen && (
+          <IngresoForm
+            key={editingIngreso?.id_ingreso || 'new-form'}
+            onSubmit={editingIngreso ? handleUpdate : handleCreate}
+            initialData={editingIngreso}
+            loading={loading}
+            onClose={() => {
+              console.log('🔒 Cerrando desde IngresoForm')
+              setModalOpen(false)
+              setTimeout(() => {
+                setEditingIngreso(null)
+              }, 300)
+            }}
+          />
+        )}
       </Modal>
 
       {/* Modal de confirmación para eliminar */}
