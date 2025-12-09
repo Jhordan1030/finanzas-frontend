@@ -6,8 +6,8 @@ import { toast } from 'react-hot-toast';
 import { Calendar, DollarSign, FileText } from 'lucide-react';
 
 const IngresoForm = ({ onSubmit, initialData, loading, onClose }) => {
-  
-  // SOLUCIÓN 1: Obtener fecha local en formato YYYY-MM-DD para el input[type="date"]
+  // ... (Funciones de fecha sin cambios)
+
   const getFechaHoy = useCallback(() => {
     const hoy = new Date();
     const year = hoy.getFullYear();
@@ -16,7 +16,6 @@ const IngresoForm = ({ onSubmit, initialData, loading, onClose }) => {
     return `${year}-${month}-${day}`;
   }, []);
 
-  // SOLUCIÓN 2: Extraer solo la parte YYYY-MM-DD de la fecha de la BD
   const extraerFechaDeBD = useCallback((fechaBD) => {
     if (!fechaBD) return getFechaHoy();
     
@@ -48,17 +47,14 @@ const IngresoForm = ({ onSubmit, initialData, loading, onClose }) => {
   const fechaActual = watch('fecha');
   const valorActual = watch('valor_ganado');
 
-  // SOLUCIÓN 3: Inicializar/Resetear formulario correctamente
   useEffect(() => {
     if (initialData) {
       const fechaFormulario = extraerFechaDeBD(initialData.fecha);
-      
       reset({
         fecha: fechaFormulario,
         descripcion_trabajo: initialData.descripcion_trabajo || '',
         valor_ganado: initialData.valor_ganado || ''
       });
-      
     } else {
       reset({
         fecha: getFechaHoy(),
@@ -66,9 +62,8 @@ const IngresoForm = ({ onSubmit, initialData, loading, onClose }) => {
         valor_ganado: ''
       });
     }
-  }, [initialData, reset, getFechaHoy, extraerFechaDeBD]);
+  }, [initialData, reset, getFechaHoy, extraerFechaDeBD, setValue]);
 
-  // SOLUCIÓN 4: Manejar submit sin recargar página
   const handleFormSubmit = async (data) => {
     try {
       const formattedData = {
@@ -89,7 +84,7 @@ const IngresoForm = ({ onSubmit, initialData, loading, onClose }) => {
   };
 
   return (
-    <div className="space-y-6 w-full"> {/* Aseguramos el 100% de ancho */}
+    <div className="space-y-6 w-full max-w-full"> {/* CLAVE: w-full para asegurar ajuste */}
       
       {/* Formulario */}
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5 w-full">
@@ -176,12 +171,12 @@ const IngresoForm = ({ onSubmit, initialData, loading, onClose }) => {
 
         {/* Resumen (responsivo) */}
         {(fechaActual || valorActual) && (
-          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 mt-6 w-full max-w-full"> {/* Clave: w-full y max-w-full */}
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 mt-6 w-full max-w-full">
             <p className="text-sm font-semibold text-blue-700 mb-2">Previsualización:</p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center space-x-2">
                 <Calendar className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                {/* Aseguramos que el texto rompa línea si es muy largo */}
+                {/* CLAVE: Asegura el ajuste de texto */}
                 <span className="text-sm text-gray-700 font-medium break-words">{fechaActual || 'Sin fecha'}</span>
               </div>
               {valorActual > 0 && (
