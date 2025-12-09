@@ -1,110 +1,118 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import Input from '../common/UI/Input'
 import Select from '../common/UI/Select'
 import Button from '../common/UI/Button'
 import { toast } from 'react-hot-toast'
 
-// Función para obtener fecha actual
-const obtenerFechaActual = () => {
-  const hoy = new Date();
-  // Ajustar a la zona horaria local
-  const fechaAjustada = new Date(hoy.getTime() - (hoy.getTimezoneOffset() * 60000));
-  return fechaAjustada.toISOString().split('T')[0];
-};
-
 const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose }) => {
-  // Determinar la fecha inicial
-  const fechaInicial = initialData?.fecha || obtenerFechaActual();
+  const { 
+    register, 
+    handleSubmit, 
+    formState: { errors }, 
+    reset
+  } = useForm()
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm({
-    defaultValues: {
-      fecha: fechaInicial,
-      categoria: initialData?.categoria || '',
-      descripcion_gasto: initialData?.descripcion_gasto || '',
-      monto_gasto: initialData?.monto_gasto || '',
+  // 1. Al CREAR: Usar fecha del dispositivo
+  // 2. Al EDITAR: Usar fecha de la base de datos
+  useEffect(() => {
+    if (initialData) {
+      // EDITAR: Fecha de la base de datos
+      console.log('📝 EDITANDO GASTO - Fecha de BD:', initialData.fecha)
+      
+      // Extraer solo YYYY-MM-DD de la fecha ISO
+      let fechaFormateada = initialData.fecha
+      if (fechaFormateada && fechaFormateada.includes('T')) {
+        fechaFormateada = fechaFormateada.split('T')[0]
+      }
+      
+      reset({
+        fecha: fechaFormateada || getFechaHoy(),
+        categoria: initialData.categoria || (categorias[0]?.value || ''),
+        descripcion_gasto: initialData.descripcion_gasto || '',
+        monto_gasto: initialData.monto_gasto || ''
+      })
+    } else {
+      // CREAR: Fecha del dispositivo actual
+      console.log('🆕 CREANDO GASTO - Usando fecha de hoy')
+      reset({
+        fecha: getFechaHoy(),
+        categoria: categorias[0]?.value || '',
+        descripcion_gasto: '',
+        monto_gasto: ''
+      })
     }
-  })
+  }, [initialData, reset, categorias])
+
+  // Obtener fecha actual en formato YYYY-MM-DD
+  const getFechaHoy = () => {
+    const hoy = new Date()
+    const year = hoy.getFullYear()
+    const month = String(hoy.getMonth() + 1).padStart(2, '0')
+    const day = String(hoy.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
 
   const handleFormSubmit = async (data) => {
     try {
-      const formattedData = {
-        ...data,
-        monto_gasto: parseFloat(data.monto_gasto)
-      }
-      await onSubmit(formattedData)
-      reset()
-      toast.success(initialData ? 'Gasto actualizado exitosamente' : 'Gasto creado exitosamente')
+      await onSubmit({
+        fecha: data.fecha,
+        categoria: data.categoria,
+        descripcion_gasto: data.descripcion_gasto,
+        monto_gasto: parseFloat(data.monto_gasto) || 0
+      })
+      
+      toast.success(initialData ? 'Gasto actualizado' : 'Gasto creado')
       if (onClose) onClose()
     } catch (error) {
-      toast.error(error.message || 'Error al guardar el gasto')
+      toast.error('Error al guardar')
     }
   }
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
       <Input
-        label="Fecha"
+        label="Fecha*"
         type="date"
-        {...register('fecha', { required: 'La fecha es requerida' })}
+        {...register('fecha', { required: 'Fecha requerida' })}
         error={errors.fecha?.message}
-        // Establecer máximo como fecha actual
-        max={obtenerFechaActual()}
+        max={getFechaHoy()}
       />
 
       <Select
-        label="Categoría"
+        label="Categoría*"
         options={categorias}
-        {...register('categoria')}
+        {...register('categoria', { required: 'Categoría requerida' })}
         error={errors.categoria?.message}
       />
 
       <Input
-        label="Descripción del gasto"
-        placeholder="Ej: Supermercado mensual"
-        {...register('descripcion_gasto', { 
-          required: 'La descripción es requerida',
-          maxLength: {
-            value: 255,
-            message: 'Máximo 255 caracteres'
-          }
-        })}
+        label="Descripción*"
+        placeholder="Ej: Supermercado"
+        {...register('descripcion_gasto', { required: 'Descripción requerida' })}
         error={errors.descripcion_gasto?.message}
       />
 
       <Input
-        label="Monto del gasto"
+        label="Monto* (USD)"
         type="number"
         step="0.01"
+        min="0.01"
         placeholder="0.00"
         {...register('monto_gasto', { 
-          required: 'El monto es requerido',
-          min: {
-            value: 0,
-            message: 'El monto debe ser positivo'
-          }
+          required: 'Monto requerido',
+          min: { value: 0.01, message: 'Debe ser mayor a 0' }
         })}
         error={errors.monto_gasto?.message}
       />
 
       <div className="flex space-x-3 pt-4">
-        <Button
-          type="submit"
-          loading={loading}
-          className="flex-1"
-        >
+        <Button type="submit" loading={loading} className="flex-1">
           {initialData ? 'Actualizar' : 'Crear'}
         </Button>
-        {onClose && (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onClose}
-            className="flex-1"
-          >
-            Cancelar
-          </Button>
-        )}
+        <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
+          Cancelar
+        </Button>
       </div>
     </form>
   )
