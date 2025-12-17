@@ -41,21 +41,6 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
           )}
 
           <div className="flex flex-col h-full py-6">
-            {/* Logo */}
-            <div className="px-4 mb-8 flex justify-center">
-              <div className="flex items-center">
-                <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
-                  FT
-                </div>
-                {isOpen && (
-                    <div className="ml-3">
-                      <p className="font-bold">Finanzas</p>
-                      <p className="text-sm text-gray-500">Tracker</p>
-                    </div>
-                )}
-              </div>
-            </div>
-
             {/* Navigation */}
             <nav className="flex-1 px-2 overflow-y-auto">
               <ul className="space-y-1">
