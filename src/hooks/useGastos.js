@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { toast } from 'react-hot-toast'
 
-// Configuración de API - SOLO URL base, sin /api al final
-const API_BASE_URL = import.meta.env.VITE_BASE_URL || 'https://trabajotracker-backend.vercel.app'
+// CONFIGURACIÓN CORRECTA PARA PROXY DE VITE
+// En desarrollo: '/api' será redirigido por Vite a 'https://trabajotracker-backend.vercel.app'
+// En producción: usaríamos la URL completa si configuramos la variable
+const API_BASE_URL = import.meta.env.MODE === 'development' ? '/api' : 'https://trabajotracker-backend.vercel.app/api'
 
 export const useGastos = () => {
     const [gastos, setGastos] = useState([])
@@ -18,9 +20,11 @@ export const useGastos = () => {
         try {
             setLoading(true)
 
+            // IMPORTANTE: En desarrollo, esto se convierte en:
+            // '/api/gastos' → Vite Proxy → 'https://trabajotracker-backend.vercel.app/api/gastos'
+            const response = await axios.get(`${API_BASE_URL}/gastos`)
 
-            const response = await axios.get(`${API_BASE_URL}/api/gastos`)
-
+            console.log('Respuesta de la API:', response.data) // Para debugging
 
             // Tu API devuelve {success, count, data} o similar
             let gastosData = []
@@ -29,6 +33,8 @@ export const useGastos = () => {
             } else if (Array.isArray(response.data)) {
                 gastosData = response.data
             }
+
+            console.log('Datos procesados:', gastosData) // Para debugging
 
             // Mapear los datos de acuerdo a la estructura de tu API
             const mappedGastos = gastosData.map(item => ({
@@ -42,7 +48,6 @@ export const useGastos = () => {
 
             // Ordenar por fecha descendente
             mappedGastos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-
 
             setGastos(mappedGastos)
 
@@ -59,7 +64,6 @@ export const useGastos = () => {
             )
 
             // Por ahora, solo calculamos gastos
-            // Los ingresos se calcularán por separado
             setBalance({
                 total: -totalGastos, // Negativo porque son gastos
                 ingresos: 0,
@@ -74,6 +78,7 @@ export const useGastos = () => {
             setError(null)
         } catch (err) {
             console.error('Error fetching gastos:', err)
+            console.error('Error details:', err.response?.data || err.message)
             setError('Error al cargar los gastos')
             toast.error('Error al cargar los gastos')
         } finally {
@@ -94,9 +99,12 @@ export const useGastos = () => {
                 categoria: data.categoria || null
             }
 
+            console.log('Enviando datos:', gastoData) // Para debugging
 
+            // IMPORTANTE: En desarrollo usa proxy, en producción URL directa
+            const response = await axios.post(`${API_BASE_URL}/gastos`, gastoData)
 
-            const response = await axios.post(`${API_BASE_URL}/api/gastos`, gastoData)
+            console.log('Respuesta creación:', response.data) // Para debugging
 
             // Tu API devuelve {success, data} o similar
             const responseData = response.data.success ? response.data.data : response.data
@@ -126,6 +134,7 @@ export const useGastos = () => {
             return newGasto
         } catch (err) {
             console.error('Error creating gasto:', err)
+            console.error('Error details:', err.response?.data || err.message)
             toast.error('Error al registrar el gasto')
             throw err
         } finally {
@@ -137,11 +146,16 @@ export const useGastos = () => {
     const deleteGasto = async (id) => {
         try {
             setLoading(true)
-            await axios.delete(`${API_BASE_URL}/api/gastos/${id}`)
+            console.log(`Eliminando gasto ${id}`) // Para debugging
+
+            // IMPORTANTE: En desarrollo usa proxy, en producción URL directa
+            await axios.delete(`${API_BASE_URL}/gastos/${id}`)
+
             setGastos(prev => prev.filter(gasto => gasto.id_gasto !== id))
             toast.success('Gasto eliminado exitosamente')
         } catch (err) {
             console.error('Error deleting gasto:', err)
+            console.error('Error details:', err.response?.data || err.message)
             toast.error('Error al eliminar el gasto')
             throw err
         } finally {
