@@ -27,7 +27,7 @@ const CATEGORIAS_POR_DEFECTO = [
 
 export const useGastos = () => {
     const [gastos, setGastos] = useState([])
-    const [categorias, setCategorias] = useState(CATEGORIAS_POR_DEFECTO) // Inicializar con categorías por defecto
+    const [categorias, setCategorias] = useState(CATEGORIAS_POR_DEFECTO)
     const [balance, setBalance] = useState({ total: 0, ingresos: 0, gastos: 0 })
     const [dashboard, setDashboard] = useState({ ultimosGastos: [] })
     const [loading, setLoading] = useState(true)
@@ -37,9 +37,7 @@ export const useGastos = () => {
     const fetchGastos = useCallback(async () => {
         try {
             setLoading(true)
-
             const response = await axios.get(`${API_BASE_URL}/gastos`)
-            console.log('Respuesta de la API:', response.data)
 
             let gastosData = []
             if (response.data && response.data.success) {
@@ -48,9 +46,7 @@ export const useGastos = () => {
                 gastosData = response.data
             }
 
-            console.log('Datos procesados:', gastosData)
-
-            // Mapear los datos de acuerdo a la estructura de tu API
+            // Mapear los datos
             const mappedGastos = gastosData.map(item => ({
                 id_gasto: item.id_gasto || item.id,
                 fecha: item.fecha,
@@ -62,19 +58,15 @@ export const useGastos = () => {
 
             // Ordenar por fecha descendente
             mappedGastos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-
             setGastos(mappedGastos)
 
-            // Extraer categorías únicas DE LOS GASTOS EXISTENTES
+            // Actualizar categorías
             const categoriasDeGastos = [...new Set(mappedGastos
                 .filter(gasto => gasto.categoria)
                 .map(gasto => gasto.categoria)
             )].map(cat => ({ value: cat, label: cat }))
 
-            // Combinar categorías por defecto con las de los gastos existentes
-            // Evitar duplicados
             const todasCategorias = [...CATEGORIAS_POR_DEFECTO]
-
             categoriasDeGastos.forEach(catGasto => {
                 const existe = todasCategorias.some(catDef => catDef.value === catGasto.value)
                 if (!existe) {
@@ -83,27 +75,9 @@ export const useGastos = () => {
             })
 
             setCategorias(todasCategorias)
-
-            // Calcular total de gastos
-            const totalGastos = mappedGastos.reduce((sum, gasto) =>
-                sum + parseFloat(gasto.monto_gasto || 0), 0
-            )
-
-            setBalance({
-                total: -totalGastos,
-                ingresos: 0,
-                gastos: totalGastos
-            })
-
-            // Configurar datos para dashboard
-            setDashboard({
-                ultimosGastos: mappedGastos.slice(0, 5)
-            })
-
             setError(null)
         } catch (err) {
             console.error('Error fetching gastos:', err)
-            console.error('Error details:', err.response?.data || err.message)
             setError('Error al cargar los gastos')
             toast.error('Error al cargar los gastos')
         } finally {
@@ -115,8 +89,6 @@ export const useGastos = () => {
     const createGasto = async (data) => {
         try {
             setLoading(true)
-
-            // Preparar datos para enviar
             const gastoData = {
                 fecha: data.fecha,
                 descripcion_gasto: data.descripcion_gasto,
@@ -124,15 +96,9 @@ export const useGastos = () => {
                 categoria: data.categoria || null
             }
 
-            console.log('Enviando datos:', gastoData)
-
             const response = await axios.post(`${API_BASE_URL}/gastos`, gastoData)
-
-            console.log('Respuesta creación:', response.data)
-
             const responseData = response.data.success ? response.data.data : response.data
 
-            // Agregar el nuevo gasto al estado
             const newGasto = {
                 id_gasto: responseData.id_gasto || responseData.id,
                 fecha: responseData.fecha,
@@ -151,12 +117,46 @@ export const useGastos = () => {
             }
 
             toast.success('Gasto registrado exitosamente')
-
             return newGasto
         } catch (err) {
             console.error('Error creating gasto:', err)
-            console.error('Error details:', err.response?.data || err.message)
             toast.error('Error al registrar el gasto')
+            throw err
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // ✅ NUEVA: Actualizar gasto
+    const updateGasto = async (id, data) => {
+        try {
+            setLoading(true)
+            const gastoData = {
+                fecha: data.fecha,
+                descripcion_gasto: data.descripcion_gasto,
+                monto_gasto: parseFloat(data.monto_gasto),
+                categoria: data.categoria || null
+            }
+
+            const response = await axios.put(`${API_BASE_URL}/gastos/${id}`, gastoData)
+            const responseData = response.data.success ? response.data.data : response.data
+
+            // Actualizar el gasto en el estado local
+            setGastos(prev => prev.map(gasto =>
+                gasto.id_gasto === id
+                    ? {
+                        ...gasto,
+                        ...responseData,
+                        monto_gasto: parseFloat(responseData.monto_gasto)
+                    }
+                    : gasto
+            ))
+
+            toast.success('Gasto actualizado exitosamente')
+            return responseData
+        } catch (err) {
+            console.error('Error updating gasto:', err)
+            toast.error('Error al actualizar el gasto')
             throw err
         } finally {
             setLoading(false)
@@ -167,15 +167,11 @@ export const useGastos = () => {
     const deleteGasto = async (id) => {
         try {
             setLoading(true)
-            console.log(`Eliminando gasto ${id}`)
-
             await axios.delete(`${API_BASE_URL}/gastos/${id}`)
-
             setGastos(prev => prev.filter(gasto => gasto.id_gasto !== id))
             toast.success('Gasto eliminado exitosamente')
         } catch (err) {
             console.error('Error deleting gasto:', err)
-            console.error('Error details:', err.response?.data || err.message)
             toast.error('Error al eliminar el gasto')
             throw err
         } finally {
@@ -183,7 +179,7 @@ export const useGastos = () => {
         }
     }
 
-    // Cargar gastos al montar el componente
+    // Cargar gastos al montar
     useEffect(() => {
         fetchGastos()
     }, [fetchGastos])
@@ -197,6 +193,7 @@ export const useGastos = () => {
         error,
         fetchGastos,
         createGasto,
+        updateGasto, // ✅ Añadir esto
         deleteGasto
     }
 }
