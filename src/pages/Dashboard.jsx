@@ -8,19 +8,18 @@ import Modal from '../components/common/UI/Modal';
 import Input from '../components/common/UI/Input';
 import Select from '../components/common/UI/Select';
 import Button from '../components/common/UI/Button';
+import PDFButton from '../components/common/UI/PDFButton';
 import {
     Filter,
     ChevronDown,
     ChevronUp,
     RefreshCw,
     Plus,
-    Trash2,
     Calendar,
     Tag,
     DollarSign,
     TrendingUp,
     TrendingDown,
-    Clock,
     BarChart3,
     FileText,
     Download,
@@ -44,13 +43,12 @@ import {
     isWithinInterval,
     startOfDay,
     endOfMonth,
-    endOfDay,
-    parseISO,
     isValid
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
+import { pdfService } from '../services/pdfService';
 
 const Dashboard = () => {
     // Hooks principales
@@ -80,6 +78,7 @@ const Dashboard = () => {
     const [showMonthFilter, setShowMonthFilter] = useState(false);
     const [availableMonths, setAvailableMonths] = useState([]);
     const [registroLoading, setRegistroLoading] = useState(false);
+    const [pdfLoading, setPdfLoading] = useState(false);
     const [mobileView, setMobileView] = useState(false);
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
@@ -99,7 +98,7 @@ const Dashboard = () => {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // FUNCIÓN CORREGIDA PARA MANEJAR FECHAS
+    // FUNCIÓN PARA MANEJAR FECHAS
     const parsearFecha = (fechaString) => {
         try {
             // Si la fecha es un string YYYY-MM-DD
@@ -207,7 +206,7 @@ const Dashboard = () => {
         }
     });
 
-    // Filtrar datos del mes - VERSIÓN CORREGIDA
+    // Filtrar datos del mes
     const datosMesActual = useMemo(() => {
         const ingresosMes = allIngresos.filter(ingreso => {
             try {
@@ -263,7 +262,7 @@ const Dashboard = () => {
         return { ingresosAnterior, gastosAnterior };
     }, [allIngresos, allGastos, mesAnterior]);
 
-    // Calcular estadísticas - VERSIÓN CORREGIDA CON DATOS REALES
+    // Calcular estadísticas - VERSIÓN CORREGIDA PARA DÍAS ÚNICOS
     const estadisticas = useMemo(() => {
         const { ingresosMes, gastosMes } = datosMesActual;
         const { ingresosAnterior, gastosAnterior } = datosMesAnterior;
@@ -286,27 +285,49 @@ const Dashboard = () => {
         }, 0);
 
         const balance = totalIngresos - totalGastos;
-        const diasTrabajados = ingresosMes.length;
+
+        // CORREGIDO: Calcular días únicos trabajados (no total de registros)
+        const diasUnicosTrabajados = new Set();
+        ingresosMes.forEach(ingreso => {
+            try {
+                if (ingreso?.fecha) {
+                    const fecha = parsearFecha(ingreso.fecha);
+                    if (fecha) {
+                        const fechaKey = format(fecha, 'yyyy-MM-dd');
+                        diasUnicosTrabajados.add(fechaKey);
+                    }
+                }
+            } catch {
+                // Ignorar errores
+            }
+        });
+        const diasTrabajados = diasUnicosTrabajados.size;
+
         const diasMes = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
         const porcentajeTrabajo = diasMes > 0 ? ((diasTrabajados / diasMes) * 100).toFixed(1) : 0;
 
         // Calcular días hasta fin de mes
         const hoy = new Date();
         const finDeMes = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-        const diasRestantes = differenceInDays(finDeMes, hoy) + 1;
+        const diasRestantes = Math.max(0, differenceInDays(finDeMes, hoy) + 1);
 
-        // Últimos 7 días - VERSIÓN CORREGIDA
+        // Últimos 7 días - VERSIÓN CORREGIDA para días únicos
         const sieteDiasAtras = subMonths(hoy, 7);
-        const ingresosUltimaSemana = allIngresos.filter(ingreso => {
+        const ingresosUltimaSemanaSet = new Set();
+        allIngresos.forEach(ingreso => {
             try {
-                if (!ingreso?.fecha) return false;
+                if (!ingreso?.fecha) return;
                 const fecha = parsearFecha(ingreso.fecha);
-                if (!fecha) return false;
-                return isWithinInterval(fecha, { start: sieteDiasAtras, end: hoy });
+                if (!fecha) return;
+                if (isWithinInterval(fecha, { start: sieteDiasAtras, end: hoy })) {
+                    const fechaKey = format(fecha, 'yyyy-MM-dd');
+                    ingresosUltimaSemanaSet.add(fechaKey);
+                }
             } catch {
-                return false;
+                // Ignorar errores
             }
-        }).length;
+        });
+        const ingresosUltimaSemana = ingresosUltimaSemanaSet.size;
 
         // Totales del mes anterior
         const totalIngresosAnterior = ingresosAnterior.reduce((sum, ingreso) => {
@@ -375,15 +396,17 @@ const Dashboard = () => {
             totalIngresos,
             totalGastos,
             balance,
-            diasTrabajados,
+            diasTrabajados, // Ahora son días únicos, no total de registros
             diasMes,
             porcentajeTrabajo,
-            diasRestantes: diasRestantes > 0 ? diasRestantes : 0,
-            ingresosUltimaSemana,
+            diasRestantes,
+            ingresosUltimaSemana, // Ahora son días únicos de la semana
             gastosPorCategoria,
             ingresosMes: ingresosOrdenados,
             gastosMes: gastosOrdenados,
-            // NUEVOS DATOS REALES:
+            totalRegistrosIngresos: ingresosMes.length, // Nuevo: total de registros
+            totalRegistrosGastos: gastosMes.length,     // Nuevo: total de registros
+            // Datos reales para estadísticas:
             totalIngresosAnterior,
             totalGastosAnterior,
             cambioIngresos: parseFloat(cambioIngresos.toFixed(1)),
@@ -444,7 +467,101 @@ const Dashboard = () => {
         }
     };
 
-    // Formatear fecha - VERSIÓN CORREGIDA
+    // Generar PDF del dashboard
+    const handleGenerarPDFDashboard = async () => {
+        setPdfLoading(true);
+        try {
+            const fechaInicio = format(startOfMonth(currentDate), 'dd/MM/yyyy');
+            const fechaFin = format(endOfMonth(currentDate), 'dd/MM/yyyy');
+            const mesActual = format(currentDate, 'MMMM yyyy', { locale: es });
+
+            // Validar que haya datos para generar el PDF
+            if (!estadisticas || estadisticas.totalIngresos === 0 && estadisticas.totalGastos === 0) {
+                toast.error('No hay datos para generar el PDF');
+                setPdfLoading(false);
+                return;
+            }
+
+            // Generar el PDF
+            const doc = pdfService.generarPDFDashboard(
+                estadisticas,
+                {
+                    mes: mesActual,
+                    fechaInicio,
+                    fechaFin
+                }
+            );
+
+            if (!doc) {
+                toast.error('Error al generar el PDF');
+                setPdfLoading(false);
+                return;
+            }
+
+            // Guardar el PDF
+            const filename = `Dashboard_Financiero_${format(currentDate, 'yyyy_MM')}.pdf`;
+            doc.save(filename);
+
+            toast.success('PDF generado exitosamente');
+        } catch (error) {
+            console.error('Error al generar PDF:', error);
+            toast.error('Error al generar PDF');
+        } finally {
+            setPdfLoading(false);
+        }
+    };
+
+    // Generar PDF de días trabajados
+    const handleGenerarPDFDiasTrabajados = () => {
+        if (estadisticas.ingresosMes.length === 0) {
+            toast.error('No hay días trabajados para generar PDF');
+            return;
+        }
+        setPdfLoading(true);
+        try {
+            const fechaInicio = format(startOfMonth(currentDate), 'dd/MM/yyyy');
+            const fechaFin = format(endOfMonth(currentDate), 'dd/MM/yyyy');
+            const doc = pdfService.generarPDFDiasTrabajados(
+                estadisticas.ingresosMes,
+                fechaInicio,
+                fechaFin
+            );
+            doc.save(`Dias_Trabajados_${format(currentDate, 'yyyy_MM')}.pdf`);
+            toast.success('PDF de días trabajados generado');
+        } catch (error) {
+            console.error('Error al generar PDF:', error);
+            toast.error('Error al generar PDF');
+        } finally {
+            setPdfLoading(false);
+        }
+    };
+
+    // Generar PDF de gastos
+    const handleGenerarPDFGastos = () => {
+        if (estadisticas.gastosMes.length === 0) {
+            toast.error('No hay gastos para generar PDF');
+            return;
+        }
+        setPdfLoading(true);
+        try {
+            const fechaInicio = format(startOfMonth(currentDate), 'dd/MM/yyyy');
+            const fechaFin = format(endOfMonth(currentDate), 'dd/MM/yyyy');
+            const doc = pdfService.generarPDFGastos(
+                estadisticas.gastosMes,
+                fechaInicio,
+                fechaFin
+            );
+            doc.save(`Gastos_${format(currentDate, 'yyyy_MM')}.pdf`);
+            toast.success('PDF de gastos generado');
+        } catch (error) {
+            console.error('Error al generar PDF:', error);
+            toast.error('Error al generar PDF');
+        } finally {
+            setPdfLoading(false);
+        }
+    };
+
+    // Formatear fecha
     const formatFecha = (fechaString) => {
         try {
             const fecha = parsearFecha(fechaString);
@@ -496,8 +613,28 @@ const Dashboard = () => {
                     <p className="text-gray-600">
                         {format(currentDate, 'MMMM yyyy', { locale: es })}
                     </p>
+                    <p className="text-sm text-gray-400 mt-1">
+                        {estadisticas.totalRegistrosIngresos || 0} registro(s) en {estadisticas.diasTrabajados || 0} día(s) trabajado(s)
+                    </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <PDFButton
+                        onClick={handleGenerarPDFDashboard}
+                        loading={pdfLoading}
+                        variant="secondary"
+                        size="small"
+                        className="flex items-center"
+                        data={{
+                            estadisticas,
+                            ingresos: estadisticas.ingresosMes,
+                            gastos: estadisticas.gastosMes,
+                            currentDate
+                        }}
+                    >
+                        <Download className="h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">PDF</span>
+                    </PDFButton>
+
                     <Button
                         onClick={handleRefresh}
                         variant="ghost"
@@ -553,7 +690,7 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Stats Cards - AHORA CON DATOS REALES */}
+            {/* Stats Cards */}
             <StatsCards
                 balance={{
                     total: estadisticas.balance,
@@ -593,16 +730,32 @@ const Dashboard = () => {
                                 <div className="p-2 bg-green-100 rounded-lg">
                                     <TrendingUp className="h-5 w-5 text-green-600" />
                                 </div>
-                                <h2 className="text-lg font-semibold text-gray-900">Últimos Días Trabajados</h2>
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900">Últimos Días Trabajados</h2>
+                                    <p className="text-sm text-gray-500">
+                                        {estadisticas.totalRegistrosIngresos || 0} registro(s) total
+                                    </p>
+                                </div>
                             </div>
-                            <Button
-                                size="small"
-                                variant="ghost"
-                                onClick={() => setShowModalDia(true)}
-                            >
-                                <Plus className="h-4 w-4" />
-                                <span className="ml-2 hidden sm:inline">Nuevo</span>
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    size="small"
+                                    variant="ghost"
+                                    onClick={() => setShowModalDia(true)}
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    <span className="ml-2 hidden sm:inline">Nuevo</span>
+                                </Button>
+                                <PDFButton
+                                    size="small"
+                                    variant="ghost"
+                                    loading={pdfLoading}
+                                    onClick={handleGenerarPDFDiasTrabajados}
+                                    className="p-2"
+                                >
+                                    <FileText className="h-4 w-4" />
+                                </PDFButton>
+                            </div>
                         </div>
                     </div>
 
@@ -643,16 +796,32 @@ const Dashboard = () => {
                                 <div className="p-2 bg-red-100 rounded-lg">
                                     <TrendingDown className="h-5 w-5 text-red-600" />
                                 </div>
-                                <h2 className="text-lg font-semibold text-gray-900">Últimos Gastos</h2>
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900">Últimos Gastos</h2>
+                                    <p className="text-sm text-gray-500">
+                                        {estadisticas.totalRegistrosGastos || 0} registro(s) total
+                                    </p>
+                                </div>
                             </div>
-                            <Button
-                                size="small"
-                                variant="ghost"
-                                onClick={() => setShowModalGasto(true)}
-                            >
-                                <Plus className="h-4 w-4" />
-                                <span className="ml-2 hidden sm:inline">Nuevo</span>
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    size="small"
+                                    variant="ghost"
+                                    onClick={() => setShowModalGasto(true)}
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    <span className="ml-2 hidden sm:inline">Nuevo</span>
+                                </Button>
+                                <PDFButton
+                                    size="small"
+                                    variant="ghost"
+                                    loading={pdfLoading}
+                                    onClick={handleGenerarPDFGastos}
+                                    className="p-2"
+                                >
+                                    <FileText className="h-4 w-4" />
+                                </PDFButton>
+                            </div>
                         </div>
                     </div>
 
@@ -693,12 +862,10 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* FOOTER PROFESIONAL - VERSIÓN BLANCO */}
+            {/* FOOTER PROFESIONAL */}
             <footer className="bg-white text-gray-800 border-t border-gray-200 rounded-2xl overflow-hidden mt-8 shadow-lg">
-                {/* Sección superior del footer */}
                 <div className="p-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        {/* Logo y descripción */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
                                 <div className="h-12 w-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center shadow-md">
@@ -725,7 +892,6 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        {/* Enlaces rápidos */}
                         <div>
                             <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                                 <BarChart3 className="h-5 w-5 text-cyan-600" />
@@ -759,7 +925,6 @@ const Dashboard = () => {
                             </ul>
                         </div>
 
-                        {/* Información de contacto */}
                         <div>
                             <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                                 <HelpCircle className="h-5 w-5 text-cyan-600" />
@@ -790,9 +955,7 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        <div className="lg:hidden">
-                            {/* Contenido adicional si lo necesitas para móviles */}
-                        </div>
+                        <div className="lg:hidden"></div>
                     </div>
                 </div>
 

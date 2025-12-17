@@ -3,13 +3,31 @@ import axios from 'axios'
 import { toast } from 'react-hot-toast'
 
 // CONFIGURACIÓN CORRECTA PARA PROXY DE VITE
-// En desarrollo: '/api' será redirigido por Vite a 'https://trabajotracker-backend.vercel.app'
-// En producción: usaríamos la URL completa si configuramos la variable
 const API_BASE_URL = import.meta.env.MODE === 'development' ? '/api' : 'https://trabajotracker-backend.vercel.app/api'
+
+// CATEGORÍAS POR DEFECTO
+const CATEGORIAS_POR_DEFECTO = [
+    { value: 'alimentacion', label: '🍔 Alimentación' },
+    { value: 'transporte', label: '🚗 Transporte' },
+    { value: 'vivienda', label: '🏠 Vivienda' },
+    { value: 'servicios', label: '💡 Servicios' },
+    { value: 'ocio', label: '🎮 Ocio' },
+    { value: 'salud', label: '🏥 Salud' },
+    { value: 'educacion', label: '📚 Educación' },
+    { value: 'ropa', label: '👕 Ropa' },
+    { value: 'tecnologia', label: '💻 Tecnología' },
+    { value: 'supermercado', label: '🛒 Supermercado' },
+    { value: 'restaurante', label: '🍽️ Restaurante' },
+    { value: 'gimnasio', label: '🏋️ Gimnasio' },
+    { value: 'viajes', label: '✈️ Viajes' },
+    { value: 'seguro', label: '🛡️ Seguro' },
+    { value: 'impuestos', label: '💰 Impuestos' },
+    { value: 'otros', label: '📦 Otros' }
+]
 
 export const useGastos = () => {
     const [gastos, setGastos] = useState([])
-    const [categorias, setCategorias] = useState([])
+    const [categorias, setCategorias] = useState(CATEGORIAS_POR_DEFECTO) // Inicializar con categorías por defecto
     const [balance, setBalance] = useState({ total: 0, ingresos: 0, gastos: 0 })
     const [dashboard, setDashboard] = useState({ ultimosGastos: [] })
     const [loading, setLoading] = useState(true)
@@ -20,13 +38,9 @@ export const useGastos = () => {
         try {
             setLoading(true)
 
-            // IMPORTANTE: En desarrollo, esto se convierte en:
-            // '/api/gastos' → Vite Proxy → 'https://trabajotracker-backend.vercel.app/api/gastos'
             const response = await axios.get(`${API_BASE_URL}/gastos`)
+            console.log('Respuesta de la API:', response.data)
 
-            console.log('Respuesta de la API:', response.data) // Para debugging
-
-            // Tu API devuelve {success, count, data} o similar
             let gastosData = []
             if (response.data && response.data.success) {
                 gastosData = response.data.data || []
@@ -34,7 +48,7 @@ export const useGastos = () => {
                 gastosData = response.data
             }
 
-            console.log('Datos procesados:', gastosData) // Para debugging
+            console.log('Datos procesados:', gastosData)
 
             // Mapear los datos de acuerdo a la estructura de tu API
             const mappedGastos = gastosData.map(item => ({
@@ -51,21 +65,32 @@ export const useGastos = () => {
 
             setGastos(mappedGastos)
 
-            // Extraer categorías únicas
-            const uniqueCategorias = [...new Set(mappedGastos
+            // Extraer categorías únicas DE LOS GASTOS EXISTENTES
+            const categoriasDeGastos = [...new Set(mappedGastos
                 .filter(gasto => gasto.categoria)
                 .map(gasto => gasto.categoria)
-            )]
-            setCategorias(uniqueCategorias.map(cat => ({ value: cat, label: cat })))
+            )].map(cat => ({ value: cat, label: cat }))
+
+            // Combinar categorías por defecto con las de los gastos existentes
+            // Evitar duplicados
+            const todasCategorias = [...CATEGORIAS_POR_DEFECTO]
+
+            categoriasDeGastos.forEach(catGasto => {
+                const existe = todasCategorias.some(catDef => catDef.value === catGasto.value)
+                if (!existe) {
+                    todasCategorias.push(catGasto)
+                }
+            })
+
+            setCategorias(todasCategorias)
 
             // Calcular total de gastos
             const totalGastos = mappedGastos.reduce((sum, gasto) =>
                 sum + parseFloat(gasto.monto_gasto || 0), 0
             )
 
-            // Por ahora, solo calculamos gastos
             setBalance({
-                total: -totalGastos, // Negativo porque son gastos
+                total: -totalGastos,
                 ingresos: 0,
                 gastos: totalGastos
             })
@@ -99,14 +124,12 @@ export const useGastos = () => {
                 categoria: data.categoria || null
             }
 
-            console.log('Enviando datos:', gastoData) // Para debugging
+            console.log('Enviando datos:', gastoData)
 
-            // IMPORTANTE: En desarrollo usa proxy, en producción URL directa
             const response = await axios.post(`${API_BASE_URL}/gastos`, gastoData)
 
-            console.log('Respuesta creación:', response.data) // Para debugging
+            console.log('Respuesta creación:', response.data)
 
-            // Tu API devuelve {success, data} o similar
             const responseData = response.data.success ? response.data.data : response.data
 
             // Agregar el nuevo gasto al estado
@@ -123,10 +146,8 @@ export const useGastos = () => {
 
             // Actualizar categorías si es nueva
             if (newGasto.categoria && !categorias.some(cat => cat.value === newGasto.categoria)) {
-                setCategorias(prev => [...prev, {
-                    value: newGasto.categoria,
-                    label: newGasto.categoria
-                }])
+                const nuevaCategoria = { value: newGasto.categoria, label: newGasto.categoria }
+                setCategorias(prev => [...prev, nuevaCategoria])
             }
 
             toast.success('Gasto registrado exitosamente')
@@ -146,9 +167,8 @@ export const useGastos = () => {
     const deleteGasto = async (id) => {
         try {
             setLoading(true)
-            console.log(`Eliminando gasto ${id}`) // Para debugging
+            console.log(`Eliminando gasto ${id}`)
 
-            // IMPORTANTE: En desarrollo usa proxy, en producción URL directa
             await axios.delete(`${API_BASE_URL}/gastos/${id}`)
 
             setGastos(prev => prev.filter(gasto => gasto.id_gasto !== id))

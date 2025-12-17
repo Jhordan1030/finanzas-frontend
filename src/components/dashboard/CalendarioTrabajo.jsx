@@ -22,7 +22,7 @@ const parsearFecha = (fechaString) => {
       if (partes.length === 3) {
         // Crear fecha local (NO UTC)
         const año = parseInt(partes[0]);
-        const mes = parseInt(partes[1]) - 1; // Los meses en JS van de 0-11
+        const mes = parseInt(partes[1]) - 1;
         const dia = parseInt(partes[2]);
 
         const fechaLocal = new Date(año, mes, dia);
@@ -53,61 +53,61 @@ const CalendarioTrabajo = ({
                              onPrevMonth,
                              onNextMonth
                            }) => {
-  // Crear mapa de días trabajados - VERSIÓN CORREGIDA
+  // Crear mapa de días trabajados - VERSIÓN CORREGIDA (por día, no por registro)
   const trabajoPorDia = useMemo(() => {
     const map = {};
+    const diasUnicos = new Set();
+
+    // Primero, agrupar todos los ingresos por día
     diasTrabajados.forEach(dia => {
       if (dia?.fecha) {
         const fecha = parsearFecha(dia.fecha);
         if (fecha) {
           const fechaKey = format(fecha, 'yyyy-MM-dd');
-          map[fechaKey] = {
-            trabajado: true,
-            valor: dia.valor_ganado || 0,
-            descripcion: dia.descripcion_trabajo || ''
-          };
+          diasUnicos.add(fechaKey);
+
+          // Si ya existe un registro para este día, sumar el valor
+          if (map[fechaKey]) {
+            map[fechaKey].valor += parseFloat(dia.valor_ganado || 0);
+            // Mantener la descripción más reciente o combinarlas
+            if (dia.descripcion_trabajo) {
+              if (map[fechaKey].descripcion) {
+                map[fechaKey].descripcion += `, ${dia.descripcion_trabajo}`;
+              } else {
+                map[fechaKey].descripcion = dia.descripcion_trabajo;
+              }
+            }
+          } else {
+            // Primer registro para este día
+            map[fechaKey] = {
+              trabajado: true,
+              valor: parseFloat(dia.valor_ganado || 0),
+              descripcion: dia.descripcion_trabajo || '',
+              registros: 1 // Contar cuántos registros tiene este día
+            };
+          }
         }
       }
     });
+
     return map;
   }, [diasTrabajados]);
 
-  // Calcular días del mes
+  // Calcular días del mes - VERSIÓN CORREGIDA
   const monthData = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-    // Calcular estadísticas CORREGIDAS
-    const diasTrabajadosMes = diasTrabajados.filter(dia => {
-      try {
-        if (!dia?.fecha) return false;
-        const fecha = parsearFecha(dia.fecha);
-        if (!fecha) return false;
-        return isSameMonth(fecha, currentDate);
-      } catch (error) {
-        return false;
-      }
-    }).length;
+    // Calcular estadísticas CORREGIDAS - usar días únicos del mapa
+    const diasTrabajadosMes = Object.keys(trabajoPorDia).length;
 
     const totalDiasMes = days.length;
     const porcentajeTrabajo = totalDiasMes > 0 ?
         ((diasTrabajadosMes / totalDiasMes) * 100).toFixed(1) : 0;
 
-    const totalIngresosMes = diasTrabajados.reduce((sum, dia) => {
-      try {
-        if (!dia?.fecha) return sum;
-        const fecha = parsearFecha(dia.fecha);
-        if (!fecha) return sum;
-
-        // Solo sumar si es del mes actual
-        if (isSameMonth(fecha, currentDate)) {
-          return sum + parseFloat(dia.valor_ganado || 0);
-        }
-        return sum;
-      } catch {
-        return sum;
-      }
+    const totalIngresosMes = Object.values(trabajoPorDia).reduce((sum, dia) => {
+      return sum + (dia.valor || 0);
     }, 0);
 
     return {
@@ -119,7 +119,7 @@ const CalendarioTrabajo = ({
       porcentajeTrabajo,
       totalIngresosMes
     };
-  }, [currentDate, diasTrabajados]);
+  }, [currentDate, trabajoPorDia]);
 
   // Clases para los días
   const dayClasses = {
@@ -145,15 +145,21 @@ const CalendarioTrabajo = ({
     }
   };
 
-  // Tooltip del día
+  // Tooltip del día - VERSIÓN MEJORADA
   const getDayTooltip = (date) => {
     try {
       const dateKey = format(date, 'yyyy-MM-dd');
       const trabajo = trabajoPorDia[dateKey];
 
       if (trabajo?.trabajado) {
-        const valor = parseFloat(trabajo.valor) || 0;
-        const descripcion = trabajo.descripcion || 'Sin descripción';
+        const valor = trabajo.valor || 0;
+        const registros = trabajo.registros || 1;
+        let descripcion = trabajo.descripcion || 'Sin descripción';
+
+        if (registros > 1) {
+          descripcion = `${registros} registros: ${descripcion}`;
+        }
+
         return `Trabajado: $${valor.toFixed(2)}\n${descripcion}`;
       }
 
@@ -178,19 +184,6 @@ const CalendarioTrabajo = ({
     }
   };
 
-  // Para debugging - muestra qué días se están detectando
-  const debugDiasTrabajados = () => {
-    console.log('DEBUG - Días trabajados detectados:');
-    Object.keys(trabajoPorDia).forEach(key => {
-      console.log(`  - ${key}: ${trabajoPorDia[key].descripcion || 'Sin descripción'}`);
-    });
-  };
-
-  // Descomenta para debuggear
-  // useEffect(() => {
-  //   debugDiasTrabajados();
-  // }, [trabajoPorDia]);
-
   return (
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-200">
@@ -199,6 +192,9 @@ const CalendarioTrabajo = ({
               <h2 className="text-lg font-semibold text-gray-900">Calendario de Trabajo</h2>
               <p className="text-sm text-gray-500 mt-1">
                 {monthData.diasTrabajadosMes} de {monthData.totalDiasMes} días trabajados ({monthData.porcentajeTrabajo}%)
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {diasTrabajados.length} registro(s) en {monthData.diasTrabajadosMes} día(s)
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -275,9 +271,17 @@ const CalendarioTrabajo = ({
                   {format(day, 'd')}
                 </span>
                     {trabajoPorDia[format(day, 'yyyy-MM-dd')]?.trabajado && (
-                        <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
-                          <div className="h-1 w-1 rounded-full bg-current"></div>
-                        </div>
+                        <>
+                          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
+                            <div className="h-1 w-1 rounded-full bg-current"></div>
+                          </div>
+                          {/* Mostrar indicador si hay múltiples registros */}
+                          {trabajoPorDia[format(day, 'yyyy-MM-dd')]?.registros > 1 && (
+                              <div className="absolute top-1 right-1">
+                                <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+                              </div>
+                          )}
+                        </>
                     )}
 
                     {/* Tooltip */}
