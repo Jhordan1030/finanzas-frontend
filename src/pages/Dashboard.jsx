@@ -620,45 +620,50 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Dashboard Financiero</h1>
-                    <p className="text-gray-600">
-                        {format(currentDate, 'MMMM yyyy', { locale: es })}
-                    </p>
-                    <p className="text-sm text-gray-400 mt-1">
-                        {estadisticas.totalRegistrosIngresos || 0} registro(s) en {estadisticas.diasTrabajados || 0} día(s) trabajado(s)
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <PDFButton
-                        onClick={handleGenerarPDFDashboard}
-                        loading={pdfLoading}
-                        variant="secondary"
-                        size="small"
-                        className="flex items-center"
-                        data={{
-                            estadisticas,
-                            ingresos: estadisticas.ingresosMes,
-                            gastos: estadisticas.gastosMes,
-                            currentDate
-                        }}
-                    >
-                        <Download className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">PDF</span>
-                    </PDFButton>
+        <div className="space-y-8">
+            {/* Header con estilo premium */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 sm:p-10 shadow-lg text-white mb-8 relative overflow-hidden">
+                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                    <div>
+                        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Dashboard Financiero</h1>
+                        <div className="flex items-center gap-2 mt-2 opacity-90">
+                            <Calendar className="h-5 w-5" />
+                            <p className="text-lg font-medium">
+                                {format(currentDate, 'MMMM yyyy', { locale: es })}
+                            </p>
+                        </div>
+                        <p className="text-sm mt-3 opacity-75 max-w-lg">
+                            Resumen de tu actividad financiera: {estadisticas.totalRegistrosIngresos || 0} ingresos y {estadisticas.totalRegistrosGastos || 0} gastos registrados.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <PDFButton
+                            onClick={handleGenerarPDFDashboard}
+                            loading={pdfLoading}
+                            variant="secondary"
+                            size="small"
+                            className="flex items-center"
+                            data={{
+                                estadisticas,
+                                ingresos: estadisticas.ingresosMes,
+                                gastos: estadisticas.gastosMes,
+                                currentDate
+                            }}
+                        >
+                            <Download className="h-4 w-4 mr-2" />
+                            <span className="hidden sm:inline">PDF</span>
+                        </PDFButton>
 
-                    <Button
-                        onClick={handleRefresh}
-                        variant="ghost"
-                        size="small"
-                        className="flex items-center"
-                    >
-                        <RefreshCw className="h-4 w-4" />
-                        <span className="hidden sm:inline ml-2">Actualizar</span>
-                    </Button>
+                        <Button
+                            onClick={handleRefresh}
+                            variant="ghost"
+                            size="small"
+                            className="flex items-center"
+                        >
+                            <RefreshCw className="h-4 w-4" />
+                            <span className="hidden sm:inline ml-2">Actualizar</span>
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -735,19 +740,20 @@ const Dashboard = () => {
             />
 
             {/* Últimos Registros */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Últimos Registros con Nuevo Estilo */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Últimos Ingresos */}
-                <div className="bg-white rounded-xl border border-gray-200">
-                    <div className="p-6 border-b border-gray-200">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300">
+                    <div className="p-6 border-b border-gray-50 bg-gradient-to-r from-green-50/50 to-transparent">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-100 rounded-lg">
-                                    <TrendingUp className="h-5 w-5 text-green-600" />
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-green-100 text-green-700 rounded-xl shadow-sm">
+                                    <TrendingUp className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-semibold text-gray-900">Últimos Días Trabajados</h2>
-                                    <p className="text-sm text-gray-500">
-                                        {estadisticas.totalRegistrosIngresos || 0} registro(s) total
+                                    <h2 className="text-lg font-bold text-gray-900">Actividad Reciente</h2>
+                                    <p className="text-sm text-gray-500 font-medium">
+                                        {estadisticas.totalRegistrosIngresos || 0} día(s) trabajado(s)
                                     </p>
                                 </div>
                             </div>
@@ -756,16 +762,17 @@ const Dashboard = () => {
                                     size="small"
                                     variant="ghost"
                                     onClick={() => setShowModalDia(true)}
+                                    className="hover:bg-green-50 text-green-700"
                                 >
                                     <Plus className="h-4 w-4" />
-                                    <span className="ml-2 hidden sm:inline">Nuevo</span>
+                                    <span className="ml-2 hidden sm:inline font-medium">Nuevo</span>
                                 </Button>
                                 <PDFButton
                                     size="small"
                                     variant="ghost"
                                     loading={pdfLoading}
                                     onClick={handleGenerarPDFDiasTrabajados}
-                                    className="p-2"
+                                    className="p-2 text-gray-400 hover:text-gray-600"
                                 >
                                     <FileText className="h-4 w-4" />
                                 </PDFButton>
@@ -773,20 +780,24 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    <div className="divide-y divide-gray-200">
+                    <div className="divide-y divide-gray-50">
                         {estadisticas.ingresosMes.slice(0, 5).map((ingreso, index) => (
-                            <div key={ingreso.id_ingreso || index} className="p-4 hover:bg-gray-50 transition-colors">
+                            <div key={ingreso.id_ingreso || index} className="p-4 hover:bg-green-50/30 transition-colors group">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-gray-900 truncate">
-                                            {ingreso.descripcion_trabajo || 'Sin descripción'}
-                                        </p>
-                                        <p className="text-sm text-gray-500 mt-1">
-                                            {formatFecha(ingreso.fecha)}
-                                        </p>
+                                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                                        <div className="w-2 h-2 rounded-full bg-green-400 group-hover:scale-125 transition-transform"></div>
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-gray-900 truncate">
+                                                {ingreso.descripcion_trabajo || 'Sin descripción'}
+                                            </p>
+                                            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                                                <Calendar className="h-3 w-3" />
+                                                {formatFecha(ingreso.fecha)}
+                                            </p>
+                                        </div>
                                     </div>
                                     <div className="flex items-center gap-3 ml-4">
-                                        <span className="font-bold text-green-600">
+                                        <span className="font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-lg border border-green-100">
                                             {formatNumero(ingreso.valor_ganado)}
                                         </span>
                                     </div>
@@ -795,24 +806,37 @@ const Dashboard = () => {
                         ))}
 
                         {estadisticas.ingresosMes.length === 0 && (
-                            <div className="text-center py-8">
-                                <p className="text-gray-500">No hay días trabajados este mes</p>
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <TrendingUp className="h-8 w-8 text-green-300" />
+                                </div>
+                                <p className="text-gray-400 font-medium">No hay actividad registrada</p>
+                                <Button variant="ghost" size="small" onClick={() => setShowModalDia(true)} className="mt-2 text-green-600 hover:text-green-700 font-medium">
+                                    Registrar ahora
+                                </Button>
                             </div>
                         )}
                     </div>
+                    {estadisticas.ingresosMes.length > 0 && (
+                        <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
+                            <button className="text-xs font-semibold text-gray-400 hover:text-green-600 uppercase tracking-wider transition-colors">
+                                Ver todo el historial
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Últimos Gastos */}
-                <div className="bg-white rounded-xl border border-gray-200">
-                    <div className="p-6 border-b border-gray-200">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300">
+                    <div className="p-6 border-b border-gray-50 bg-gradient-to-r from-red-50/50 to-transparent">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-red-100 rounded-lg">
-                                    <TrendingDown className="h-5 w-5 text-red-600" />
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-red-100 text-red-700 rounded-xl shadow-sm">
+                                    <TrendingDown className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-semibold text-gray-900">Últimos Gastos</h2>
-                                    <p className="text-sm text-gray-500">
+                                    <h2 className="text-lg font-bold text-gray-900">Gastos Recientes</h2>
+                                    <p className="text-sm text-gray-500 font-medium">
                                         {estadisticas.totalRegistrosGastos || 0} registro(s) total
                                     </p>
                                 </div>
@@ -822,16 +846,17 @@ const Dashboard = () => {
                                     size="small"
                                     variant="ghost"
                                     onClick={() => setShowModalGasto(true)}
+                                    className="hover:bg-red-50 text-red-700"
                                 >
                                     <Plus className="h-4 w-4" />
-                                    <span className="ml-2 hidden sm:inline">Nuevo</span>
+                                    <span className="ml-2 hidden sm:inline font-medium">Nuevo</span>
                                 </Button>
                                 <PDFButton
                                     size="small"
                                     variant="ghost"
                                     loading={pdfLoading}
                                     onClick={handleGenerarPDFGastos}
-                                    className="p-2"
+                                    className="p-2 text-gray-400 hover:text-gray-600"
                                 >
                                     <FileText className="h-4 w-4" />
                                 </PDFButton>
@@ -839,27 +864,31 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    <div className="divide-y divide-gray-200">
+                    <div className="divide-y divide-gray-50">
                         {estadisticas.gastosMes.slice(0, 5).map((gasto, index) => (
-                            <div key={gasto.id_gasto || index} className="p-4 hover:bg-gray-50 transition-colors">
+                            <div key={gasto.id_gasto || index} className="p-4 hover:bg-red-50/30 transition-colors group">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-medium text-gray-900 truncate">
-                                                {gasto.descripcion_gasto || 'Sin descripción'}
+                                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                                        <div className="w-2 h-2 rounded-full bg-red-400 group-hover:scale-125 transition-transform"></div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-semibold text-gray-900 truncate">
+                                                    {gasto.descripcion_gasto || 'Sin descripción'}
+                                                </p>
+                                                {gasto.categoria && (
+                                                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] uppercase font-bold tracking-wide rounded-md">
+                                                        {gasto.categoria}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                                                <Calendar className="h-3 w-3" />
+                                                {formatFecha(gasto.fecha)}
                                             </p>
-                                            {gasto.categoria && (
-                                                <span className="px-2 py-0.5 bg-gray-100 text-xs text-gray-600 rounded whitespace-nowrap">
-                                                    {gasto.categoria}
-                                                </span>
-                                            )}
                                         </div>
-                                        <p className="text-sm text-gray-500 mt-1">
-                                            {formatFecha(gasto.fecha)}
-                                        </p>
                                     </div>
                                     <div className="flex items-center gap-3 ml-4">
-                                        <span className="font-bold text-red-600">
+                                        <span className="font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-lg border border-red-100">
                                             {formatNumero(gasto.monto_gasto)}
                                         </span>
                                     </div>
@@ -868,11 +897,24 @@ const Dashboard = () => {
                         ))}
 
                         {estadisticas.gastosMes.length === 0 && (
-                            <div className="text-center py-8">
-                                <p className="text-gray-500">No hay gastos este mes</p>
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <TrendingDown className="h-8 w-8 text-red-300" />
+                                </div>
+                                <p className="text-gray-400 font-medium">No hay gastos este mes</p>
+                                <Button variant="ghost" size="small" onClick={() => setShowModalGasto(true)} className="mt-2 text-red-600 hover:text-red-700 font-medium">
+                                    Registrar gasto
+                                </Button>
                             </div>
                         )}
                     </div>
+                    {estadisticas.gastosMes.length > 0 && (
+                        <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
+                            <button className="text-xs font-semibold text-gray-400 hover:text-red-600 uppercase tracking-wider transition-colors">
+                                Ver todo el historial
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
