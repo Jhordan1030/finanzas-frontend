@@ -50,6 +50,15 @@ import { toast } from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { pdfService } from '../services/pdfService';
 
+// Función para obtener fecha local en formato YYYY-MM-DD
+const getLocalDateString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const Dashboard = () => {
     // Hooks principales
     const {
@@ -96,6 +105,12 @@ const Dashboard = () => {
         checkMobile();
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // Cargar datos al montar el componente
+    useEffect(() => {
+        fetchGastos();
+        fetchIngresos();
     }, []);
 
     // FUNCIÓN PARA MANEJAR FECHAS
@@ -191,7 +206,7 @@ const Dashboard = () => {
     // Formularios
     const { register: registerDia, handleSubmit: handleSubmitDia, formState: { errors: errorsDia }, reset: resetDia } = useForm({
         defaultValues: {
-            fecha: new Date().toISOString().split('T')[0],
+            fecha: getLocalDateString(),
             valor_ganado: '',
             descripcion_trabajo: ''
         }
@@ -199,7 +214,7 @@ const Dashboard = () => {
 
     const { register: registerGasto, handleSubmit: handleSubmitGasto, formState: { errors: errorsGasto }, reset: resetGasto } = useForm({
         defaultValues: {
-            fecha: new Date().toISOString().split('T')[0],
+            fecha: getLocalDateString(),
             monto_gasto: '',
             descripcion_gasto: '',
             categoria: ''
@@ -672,9 +687,8 @@ const Dashboard = () => {
                                     {availableMonths.map((month, index) => (
                                         <button
                                             key={index}
-                                            className={`w-full text-left px-3 py-2 rounded hover:bg-gray-100 ${
-                                                isSameMonth(month, currentDate) ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                                            }`}
+                                            className={`w-full text-left px-3 py-2 rounded hover:bg-gray-100 ${isSameMonth(month, currentDate) ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                                                }`}
                                             onClick={() => {
                                                 setCurrentDate(month);
                                                 setShowMonthFilter(false);

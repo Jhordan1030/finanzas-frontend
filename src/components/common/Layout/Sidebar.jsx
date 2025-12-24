@@ -73,11 +73,10 @@ const Sidebar = ({ isOpen, onClose, isMobile }) => {
 
             {/* Logout */}
             <div className="px-3 pt-6 border-t">
-              // En el botón de logout del Sidebar, cambia:
+              
               <button
                   onClick={() => {
                     if (isMobile) onClose();
-                    // Agrega esta línea:
                     window.location.href = '/login';
                   }}
                   className={`flex items-center w-full px-3 py-3 rounded-lg
