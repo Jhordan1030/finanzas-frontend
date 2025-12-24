@@ -1,17 +1,20 @@
 import React from 'react';
 import { Menu, Bell, X } from 'lucide-react';
+import { useAuth } from '../../../hooks/useAuth';
 
 const Header = ({ onMenuToggle, isSidebarOpen }) => {
-    const userData = {
-        name: 'Juan Pérez',
-        initial: 'J'
+    const { user, logout } = useAuth();
+
+    // Obtener iniciales del usuario
+    const getInitials = () => {
+        if (!user?.nombre) return 'U';
+        return user.nombre.charAt(0).toUpperCase();
     };
 
     return (
         <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
             <div className="px-4 sm:px-6 lg:px-8 h-16">
                 <div className="flex items-center justify-between h-full">
-
                     {/* Left Section - Menu Toggle & Logo */}
                     <div className="flex items-center gap-3">
                         {/* Mobile Menu Button */}
@@ -52,15 +55,23 @@ const Header = ({ onMenuToggle, isSidebarOpen }) => {
                         </button>
 
                         {/* User Profile */}
-                        <div className="flex items-center gap-2">
-                            <div className="h-10 w-10 bg-gradient-to-br from-blue-600 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                                {userData.initial}
+                        {user && (
+                            <div className="flex items-center gap-2">
+                                <div className="h-10 w-10 bg-gradient-to-br from-blue-600 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                                    {getInitials()}
+                                </div>
+                                <div className="hidden lg:block text-left">
+                                    <p className="text-sm font-medium text-gray-900">{user.nombre}</p>
+                                    <p className="text-xs text-gray-500 capitalize">{user.rol}</p>
+                                </div>
+                                <button
+                                    onClick={logout}
+                                    className="ml-2 px-3 py-1.5 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
+                                >
+                                    Salir
+                                </button>
                             </div>
-                            <div className="hidden lg:block text-left">
-                                <p className="text-sm font-medium text-gray-900">{userData.name}</p>
-                                <p className="text-xs text-gray-500">Administrador</p>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>

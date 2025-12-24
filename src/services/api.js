@@ -1,31 +1,46 @@
-// src/services/api.js - VERSIÓN CORREGIDA
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
-const API_BASE_URL = import.meta.env.VITE_BASE_URL || 'https://trabajotracker-backend.vercel.app';
+const API_URL = import.meta.env.VITE_API_URL || 'https://trabajotracker-backend.vercel.app';
 
 const api = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: API_URL,
     timeout: 30000,
     headers: {
         'Content-Type': 'application/json',
     }
 });
 
-// Interceptor para extraer SOLO el campo 'data' de la respuesta
+// Interceptor para incluir token automáticamente
+api.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+
+        console.log('🌐 Request URL:', config.baseURL + config.url);
+
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+// Interceptor para manejar respuestas
 api.interceptors.response.use(
     (response) => {
-
-
-        // TU BACKEND DEVUELVE: { success: true, data: [...] }
-        // EXTRAEMOS SOLO EL 'data'
         const responseData = response.data;
 
-        // Si la respuesta tiene 'data', devolver eso
+        // Para auth endpoints, devolver la respuesta completa
+        if (response.config.url.includes('/auth/')) {
+            return responseData;
+        }
+
+        // Para otros endpoints, extraer solo el campo 'data' si existe
         if (responseData && typeof responseData === 'object' && 'data' in responseData) {
             return responseData.data;
         }
 
-        // Si no, devolver la respuesta completa
         return responseData;
     },
     (error) => {
@@ -35,31 +50,38 @@ api.interceptors.response.use(
             data: error.response?.data
         });
 
+        if (error.response) {
+            const { status, data } = error.response;
+
+            switch (status) {
+                case 401:
+                case 403:
+                    if (!window.location.pathname.includes('/login') &&
+                        !window.location.pathname.includes('/register')) {
+
+                        localStorage.removeItem('auth_token');
+                        localStorage.removeItem('user_data');
+                        toast.error('Sesión expirada. Por favor, inicie sesión nuevamente.');
+                        setTimeout(() => {
+                            window.location.href = '/login';
+                        }, 1000);
+                    }
+                    break;
+                case 404:
+                    toast.error(data?.mensaje || 'Endpoint no encontrado');
+                    break;
+                case 500:
+                    toast.error('Error interno del servidor');
+                    break;
+                default:
+                    if (data?.mensaje) {
+                        toast.error(data.mensaje);
+                    }
+            }
+        }
+
         return Promise.reject(error.response?.data || error);
     }
 );
-
-// Servicio de API
-export const apiService = {
-    // Test endpoints
-    healthCheck: () => api.get('/health'),
-
-    // Ingresos
-    getIngresos: () => api.get('/api/ingresos'),
-    createIngreso: (data) => api.post('/api/ingresos', data),
-    getTotalIngresos: () => api.get('/api/ingresos/total'),
-    getUltimosIngresos: (limit = 5) => api.get(`/api/ingresos/ultimos?limit=${limit}`),
-    getResumenMensual: () => api.get('/api/ingresos/resumen-mensual'),
-
-    // Gastos
-    getGastos: () => api.get('/api/gastos'),
-    createGasto: (data) => api.post('/api/gastos', data),
-    getCategorias: () => api.get('/api/gastos/categorias'),
-    getBalance: () => api.get('/api/gastos/balance'),
-    getDashboard: () => api.get('/api/gastos/dashboard'),
-    getUltimosGastos: (limit = 5) => api.get(`/api/gastos/ultimos?limit=${limit}`),
-    getTotalGastos: () => api.get('/api/gastos/total'),
-    getResumenCategoria: () => api.get('/api/gastos/resumen-categoria'),
-};
 
 export default api;

@@ -1,117 +1,131 @@
-import { useState, useEffect, useCallback } from 'react'
-import axios from 'axios'
-import { toast } from 'react-hot-toast'
-
-// Configuración de API - SOLO URL base, sin /api al final
-const API_BASE_URL = import.meta.env.VITE_BASE_URL || 'https://trabajotracker-backend.vercel.app'
+import { useState, useCallback } from 'react';
+import { ingresosService } from '../services/ingresosService';
+import toast from 'react-hot-toast';
 
 export const useIngresos = () => {
-    const [ingresos, setIngresos] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(null)
+    const [ingresos, setIngresos] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    // Fetch todos los ingresos
-    const fetchIngresos = useCallback(async () => {
+    // Obtener todos los ingresos
+    const fetchIngresos = useCallback(async (params = {}) => {
+        setLoading(true);
+        setError(null);
         try {
-            setLoading(true)
-
-
-            const response = await axios.get(`${API_BASE_URL}/api/ingresos`)
-
-
-            // Tu API devuelve {success, count, data}
-            let ingresosData = []
-            if (response.data && response.data.success) {
-                ingresosData = response.data.data || []
-            } else if (Array.isArray(response.data)) {
-                ingresosData = response.data
-            }
-
-            // Mapear los datos de acuerdo a la estructura de tu API
-            const mappedIngresos = ingresosData.map(item => ({
-                id_ingreso: item.id_ingreso || item.id,
-                fecha: item.fecha, // Ya viene como string ISO
-                descripcion_trabajo: item.descripcion_trabajo || null,
-                valor_ganado: parseFloat(item.valor_ganado) || 0,
-                created_at: item.fecha_registro || item.created_at
-            }))
-
-            // Ordenar por fecha descendente (más reciente primero)
-            mappedIngresos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-
-
-            setIngresos(mappedIngresos)
-            setError(null)
+            const data = await ingresosService.getIngresos(params);
+            setIngresos(data);
+            return data;
         } catch (err) {
-            console.error('Error fetching ingresos:', err)
-            setError('Error al cargar los ingresos')
-            toast.error('Error al cargar los días trabajados')
+            const errorMsg = err?.mensaje || 'Error al cargar ingresos';
+            setError(errorMsg);
+            toast.error(errorMsg);
+            throw err;
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }, [])
+    }, []);
 
-    // Crear nuevo ingreso
-    const createIngreso = async (data) => {
+    // Crear ingreso
+    const createIngreso = useCallback(async (ingresoData) => {
+        setLoading(true);
         try {
-            setLoading(true)
-
-            // Preparar datos para enviar
-            const ingresoData = {
-                fecha: data.fecha,
-                descripcion_trabajo: data.descripcion_trabajo || null,
-                valor_ganado: parseFloat(data.valor_ganado)
-            }
-
-
-
-            const response = await axios.post(`${API_BASE_URL}/api/ingresos`, ingresoData)
-
-            // Tu API devuelve {success, data}
-            const responseData = response.data.success ? response.data.data : response.data
-
-            // Agregar el nuevo ingreso al estado
-            const newIngreso = {
-                id_ingreso: responseData.id_ingreso || responseData.id,
-                fecha: responseData.fecha,
-                descripcion_trabajo: responseData.descripcion_trabajo,
-                valor_ganado: parseFloat(responseData.valor_ganado),
-                created_at: responseData.fecha_registro || responseData.created_at
-            }
-
-            setIngresos(prev => [newIngreso, ...prev])
-            toast.success('Día trabajado registrado exitosamente')
-
-            return newIngreso
+            const nuevoIngreso = await ingresosService.createIngreso(ingresoData);
+            setIngresos(prev => [nuevoIngreso, ...prev]);
+            toast.success('Ingreso creado exitosamente');
+            return nuevoIngreso;
         } catch (err) {
-            console.error('Error creating ingreso:', err)
-            toast.error('Error al registrar el día trabajado')
-            throw err
+            const errorMsg = err?.mensaje || 'Error al crear ingreso';
+            toast.error(errorMsg);
+            throw err;
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
+    }, []);
+
+    // Actualizar ingreso
+    const updateIngreso = useCallback(async (id, ingresoData) => {
+        setLoading(true);
+        try {
+            const ingresoActualizado = await ingresosService.updateIngreso(id, ingresoData);
+            setIngresos(prev =>
+                prev.map(ingreso =>
+                    ingreso.id_ingreso === id ? ingresoActualizado : ingreso
+                )
+            );
+            toast.success('Ingreso actualizado exitosamente');
+            return ingresoActualizado;
+        } catch (err) {
+            const errorMsg = err?.mensaje || 'Error al actualizar ingreso';
+            toast.error(errorMsg);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     // Eliminar ingreso
-    const deleteIngreso = async (id) => {
+    const deleteIngreso = useCallback(async (id) => {
+        setLoading(true);
         try {
-            setLoading(true)
-            await axios.delete(`${API_BASE_URL}/api/ingresos/${id}`)
-            setIngresos(prev => prev.filter(ingreso => ingreso.id_ingreso !== id))
-            toast.success('Día trabajado eliminado exitosamente')
+            await ingresosService.deleteIngreso(id);
+            setIngresos(prev => prev.filter(ingreso => ingreso.id_ingreso !== id));
+            toast.success('Ingreso eliminado exitosamente');
         } catch (err) {
-            console.error('Error deleting ingreso:', err)
-            toast.error('Error al eliminar el día trabajado')
-            throw err
+            const errorMsg = err?.mensaje || 'Error al eliminar ingreso';
+            toast.error(errorMsg);
+            throw err;
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
+    }, []);
 
-    // Cargar ingresos al montar el componente
-    useEffect(() => {
-        fetchIngresos()
-    }, [fetchIngresos])
+    // Obtener resumen mensual
+    const fetchResumenMensual = useCallback(async () => {
+        setLoading(true);
+        try {
+            return await ingresosService.getResumenMensual();
+        } catch (err) {
+            const errorMsg = err?.mensaje || 'Error al cargar resumen mensual';
+            toast.error(errorMsg);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // Obtener total de ingresos
+    const fetchTotalIngresos = useCallback(async () => {
+        try {
+            return await ingresosService.getTotalIngresos();
+        } catch (err) {
+            console.error('Error al cargar total de ingresos:', err);
+            throw err;
+        }
+    }, []);
+
+    // Obtener últimos ingresos
+    const fetchUltimosIngresos = useCallback(async (limit = 5) => {
+        try {
+            return await ingresosService.getUltimosIngresos(limit);
+        } catch (err) {
+            console.error('Error al cargar últimos ingresos:', err);
+            throw err;
+        }
+    }, []);
+
+    // Obtener estadísticas admin (solo admin)
+    const fetchEstadisticasAdmin = useCallback(async () => {
+        setLoading(true);
+        try {
+            return await ingresosService.getEstadisticasAdmin();
+        } catch (err) {
+            const errorMsg = err?.mensaje || 'Error al cargar estadísticas';
+            toast.error(errorMsg);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     return {
         ingresos,
@@ -119,6 +133,11 @@ export const useIngresos = () => {
         error,
         fetchIngresos,
         createIngreso,
-        deleteIngreso
-    }
-}
+        updateIngreso,
+        deleteIngreso,
+        fetchResumenMensual,
+        fetchTotalIngresos,
+        fetchUltimosIngresos,
+        fetchEstadisticasAdmin
+    };
+};
