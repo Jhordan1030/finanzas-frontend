@@ -620,23 +620,23 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
             {/* Header con estilo premium */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 sm:p-10 shadow-lg text-white mb-8 relative overflow-hidden">
-                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-5 sm:p-8 shadow-lg text-white mb-6 sm:mb-8 relative overflow-hidden">
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                     <div>
-                        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Dashboard Financiero</h1>
+                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">Dashboard Financiero</h1>
                         <div className="flex items-center gap-2 mt-2 opacity-90">
-                            <Calendar className="h-5 w-5" />
-                            <p className="text-lg font-medium">
+                            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
+                            <p className="text-base sm:text-lg font-medium">
                                 {format(currentDate, 'MMMM yyyy', { locale: es })}
                             </p>
                         </div>
-                        <p className="text-sm mt-3 opacity-75 max-w-lg">
+                        <p className="text-xs sm:text-sm mt-3 opacity-75 max-w-lg">
                             Resumen de tu actividad financiera: {estadisticas.totalRegistrosIngresos || 0} ingresos y {estadisticas.totalRegistrosGastos || 0} gastos registrados.
                         </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <PDFButton
                             onClick={handleGenerarPDFDashboard}
                             loading={pdfLoading}
@@ -744,7 +744,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Últimos Ingresos */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300">
-                    <div className="p-6 border-b border-gray-50 bg-gradient-to-r from-green-50/50 to-transparent">
+                    <div className="p-4 sm:p-6 border-b border-gray-50 bg-gradient-to-r from-green-50/50 to-transparent">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-green-100 text-green-700 rounded-xl shadow-sm">
@@ -828,7 +828,7 @@ const Dashboard = () => {
 
                 {/* Últimos Gastos */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300">
-                    <div className="p-6 border-b border-gray-50 bg-gradient-to-r from-red-50/50 to-transparent">
+                    <div className="p-4 sm:p-6 border-b border-gray-50 bg-gradient-to-r from-red-50/50 to-transparent">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-red-100 text-red-700 rounded-xl shadow-sm">
@@ -1147,7 +1147,16 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Select
                             label="Categoría"
-                            options={Array.isArray(categoriasGastos) ? categoriasGastos.map(cat => cat?.value || cat) : []}
+                            options={Array.isArray(categoriasGastos) ? categoriasGastos.map(cat => {
+                                if (typeof cat === 'object' && cat !== null) {
+                                    const val = cat.value || cat.categoria || cat.id || cat.nombre;
+                                    return {
+                                        value: val,
+                                        label: cat.label || cat.nombre || cat.categoria || val
+                                    };
+                                }
+                                return cat;
+                            }) : []}
                             {...registerGasto('categoria')}
                             error={errorsGasto.categoria?.message}
                         />

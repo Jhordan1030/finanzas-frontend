@@ -335,38 +335,44 @@ const IngresosPage = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Header */}
+        {/* Header Premium */}
         <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <CalendarDays className="h-6 w-6 text-blue-600" />
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 sm:p-8 shadow-lg text-white relative overflow-hidden">
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+                  <CalendarDays className="h-8 w-8 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Días Trabajados</h1>
-                  <p className="text-gray-600 mt-1">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Días Trabajados</h1>
+                  <p className="text-blue-100 mt-1 font-medium">
                     Gestiona y visualiza tu historial de días trabajados
                   </p>
                 </div>
               </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing || loading}
+                  className="bg-white/10 hover:bg-white/20 text-white border-white/20 hidden sm:flex"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  Actualizar
+                </Button>
+                <Button
+                  onClick={() => setModalOpen(true)}
+                  className="bg-white text-blue-600 hover:bg-blue-50 border-transparent shadow-md"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  <span className="hidden sm:inline font-bold">Nuevo Día</span>
+                  <span className="sm:hidden font-bold">Nuevo</span>
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="secondary"
-                onClick={handleRefresh}
-                disabled={isRefreshing || loading}
-                className="hidden sm:flex"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Actualizar
-              </Button>
-              <Button onClick={() => setModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Nuevo Día</span>
-                <span className="sm:hidden">Nuevo</span>
-              </Button>
-            </div>
+            {/* Decorative background elements */}
+            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
           </div>
         </div>
 
@@ -507,8 +513,8 @@ const IngresosPage = () => {
                             setCurrentPage(1)
                           }}
                           className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${isSameMonth(mes, selectedMonth)
-                              ? 'bg-blue-50 text-blue-600 font-medium'
-                              : 'text-gray-700'
+                            ? 'bg-blue-50 text-blue-600 font-medium'
+                            : 'text-gray-700'
                             }`}
                         >
                           <div className="flex items-center justify-between">
@@ -808,8 +814,8 @@ const IngresosPage = () => {
                               key={i}
                               onClick={() => setCurrentPage(pageNum)}
                               className={`w-10 h-10 rounded-lg font-medium transition-all ${currentPage === pageNum
-                                  ? 'bg-blue-600 text-white'
-                                  : 'text-gray-700 hover:bg-gray-100'
+                                ? 'bg-blue-600 text-white'
+                                : 'text-gray-700 hover:bg-gray-100'
                                 }`}
                             >
                               {pageNum}

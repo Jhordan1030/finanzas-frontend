@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import Input from '../common/UI/Input';
 import Select from '../common/UI/Select';
@@ -17,6 +17,19 @@ const RegistroRapido = ({
 }) => {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [tipoRegistro, setTipoRegistro] = useState('dia');
+
+  const formattedCategories = useMemo(() => {
+    return Array.isArray(categoriasGastos) ? categoriasGastos.map(cat => {
+      if (typeof cat === 'object' && cat !== null) {
+        const val = cat.value || cat.categoria || cat.id || cat.nombre;
+        return {
+          value: val,
+          label: cat.label || cat.nombre || cat.categoria || val
+        };
+      }
+      return cat;
+    }) : [];
+  }, [categoriasGastos]);
 
   const { register: registerDia, handleSubmit: handleSubmitDia, formState: { errors: errorsDia }, reset: resetDia } = useForm({
     defaultValues: {
@@ -118,8 +131,8 @@ const RegistroRapido = ({
             <button
               onClick={() => setTipoRegistro('dia')}
               className={`flex items-center justify-center p-4 rounded-lg border transition-all ${tipoRegistro === 'dia'
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm'
-                  : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm'
+                : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
                 }`}
             >
               <Calendar className="h-5 w-5 mr-2" />
@@ -128,8 +141,8 @@ const RegistroRapido = ({
             <button
               onClick={() => setTipoRegistro('gasto')}
               className={`flex items-center justify-center p-4 rounded-lg border transition-all ${tipoRegistro === 'gasto'
-                  ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-sm'
-                  : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-sm'
+                : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
                 }`}
             >
               <Tag className="h-5 w-5 mr-2" />
@@ -202,7 +215,7 @@ const RegistroRapido = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Select
                   label="Categoría"
-                  options={categoriasGastos}
+                  options={formattedCategories}
                   {...registerGasto('categoria')}
                   error={errorsGasto.categoria?.message}
                 />

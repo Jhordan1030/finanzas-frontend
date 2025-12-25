@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import { Calendar, DollarSign, FileText, Tag } from 'lucide-react';
 
 const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose }) => {
-  
+
   // FUNCIÓN CORREGIDA: Obtener la fecha local en formato YYYY-MM-DD
   const getFechaHoy = useCallback(() => {
     const hoy = new Date();
@@ -23,7 +23,7 @@ const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose })
     if (!fechaString) return '';
     try {
       // Usar la cadena YYYY-MM-DD y crear la fecha al mediodía para evitar problemas de DST
-      const dateObj = new Date(fechaString + 'T12:00:00'); 
+      const dateObj = new Date(fechaString + 'T12:00:00');
       const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
       return dateObj.toLocaleDateString('es-ES', opciones);
     } catch (e) {
@@ -45,13 +45,25 @@ const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose })
         { value: 'otros', label: '📦 Otros' }
       ];
     }
-    return categorias;
+
+    return categorias.map(cat => {
+      if (typeof cat === 'object' && cat !== null) {
+        // Prioridad: value > categoria (slug) > id > nombre
+        const val = cat.value || cat.categoria || cat.id || cat.nombre;
+        const lab = cat.label || cat.nombre || cat.categoria || val;
+        return {
+          value: val,
+          label: lab
+        };
+      }
+      return { value: cat, label: cat };
+    });
   }, [categorias]);
 
-  const { 
-    register, 
-    handleSubmit, 
-    formState: { errors, isDirty }, 
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty },
     reset,
     watch
   } = useForm({
@@ -111,9 +123,9 @@ const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose })
       };
 
       await onSubmit(formattedData);
-      
+
       toast.success(initialData ? '✅ Gasto actualizado' : '✅ Gasto creado');
-      
+
       if (onClose) {
         onClose();
       }
@@ -124,7 +136,7 @@ const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose })
 
   return (
     <div className="space-y-6 w-full max-w-full">
-      
+
       {/* Header con icono */}
       <div className="flex items-center space-x-3">
         <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
@@ -145,7 +157,7 @@ const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose })
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <p className="text-sm font-semibold text-gray-700 mb-3">Resumen del Gasto:</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"> {/* Apila en móvil */}
-            
+
             {/* Fecha */}
             <div className="flex items-start space-x-2">
               <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0 mt-1" />
@@ -156,7 +168,7 @@ const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose })
                 </p>
               </div>
             </div>
-            
+
             {/* Categoría */}
             <div className="flex items-start space-x-2">
               <Tag className="h-4 w-4 text-gray-400 flex-shrink-0 mt-1" />
@@ -167,7 +179,7 @@ const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose })
                 </p>
               </div>
             </div>
-            
+
             {/* Monto Total */}
             {montoActual && (
               <div className="col-span-1 sm:col-span-2 flex items-center space-x-2 border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
@@ -196,7 +208,7 @@ const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose })
           <Input
             id="gasto-fecha"
             type="date"
-            {...register('fecha', { 
+            {...register('fecha', {
               required: 'La fecha es requerida',
               validate: {
                 notFuture: value => {
@@ -224,7 +236,7 @@ const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose })
           <Select
             id="gasto-categoria"
             options={categoriasLista}
-            {...register('categoria', { 
+            {...register('categoria', {
               required: 'La categoría es requerida'
             })}
             error={errors.categoria?.message}
@@ -274,7 +286,7 @@ const GastoForm = ({ onSubmit, initialData, loading, categorias = [], onClose })
               min="0.01"
               placeholder="0.00"
               className="pl-7 w-full"
-              {...register('monto_gasto', { 
+              {...register('monto_gasto', {
                 required: 'El monto es requerido',
                 min: {
                   value: 0.01,

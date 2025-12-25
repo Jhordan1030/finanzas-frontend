@@ -109,7 +109,7 @@ const StatsCards = ({
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Ingresos Totales</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">
                 {formatCurrency(ingresos)}
               </p>
             </div>
@@ -135,7 +135,7 @@ const StatsCards = ({
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Gastos Totales</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">
                 {formatCurrency(gastos)}
               </p>
             </div>
@@ -161,7 +161,7 @@ const StatsCards = ({
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Balance Neto</p>
-              <p className={`text-3xl font-bold mt-2 ${balanceInfo.textColor}`}>
+              <p className={`text-2xl sm:text-3xl font-bold mt-2 ${balanceInfo.textColor}`}>
                 {formatCurrency(balanceTotal)}
               </p>
             </div>
